@@ -4,6 +4,7 @@ fn main() {
             "get_settings",
             "save_settings",
             "layout",
+            "open_qr_sign_in",
             "clear_tiktok_data",
         ]),
     ))

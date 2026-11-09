@@ -48,6 +48,7 @@ const launch = element<HTMLSelectElement>("launch");
 const confirmLogout = element("confirm-logout");
 const notice = element("notice");
 const noticeBar = element("notice-bar");
+const qrButton = element<HTMLButtonElement>("open-qr-sign-in");
 const displayToggles = [
   ["videoOnly", "video-only"],
   ["hideSidebar", "hide-sidebar"],
@@ -66,9 +67,10 @@ let saveQueue: Promise<void> = Promise.resolve();
 let lastLayout = "";
 let layoutFrame = 0;
 
-function showNotice(message: string) {
+function showNotice(message: string, offerQrSignIn = false) {
   notice.textContent = message;
   noticeBar.hidden = message === "";
+  qrButton.hidden = !offerQrSignIn;
   scheduleLayout();
 }
 
@@ -162,6 +164,17 @@ async function clearData(signOut: boolean) {
   }
 }
 
+qrButton.addEventListener("click", async () => {
+  qrButton.disabled = true;
+  try {
+    await tauri.invoke("open_qr_sign_in");
+    await showSettings(false);
+  } catch (error) {
+    report(error);
+  } finally {
+    qrButton.disabled = false;
+  }
+});
 element("dismiss-notice").addEventListener("click", () => {
   showNotice("");
   if (!settingsOpen) void placeSite(true);
@@ -187,7 +200,7 @@ element("confirm-logout-button").addEventListener("click", () => void clearData(
 
 window.addEventListener("desktop-settings", () => void showSettings(true));
 window.addEventListener("desktop-popup-blocked", () => {
-  showNotice("Popup blocked. Use TikTok’s QR code or phone/email to sign in.");
+  showNotice("This popup could not open. For TikTok sign-in, use a QR code.", true);
 });
 window.addEventListener("desktop-load-error", () => showNotice("WebView2 could not start the TikTok view."));
 window.addEventListener("keydown", (event) => {

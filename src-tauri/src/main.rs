@@ -157,6 +157,18 @@ fn layout(webview: Webview, pane: Option<Pane>, focus: bool) -> Result<(), Strin
 }
 
 #[tauri::command]
+fn open_qr_sign_in(webview: Webview) -> Result<(), String> {
+    check_shell(&webview)?;
+    let app = webview.app_handle();
+    if app.state::<ViewState>().lock().map_err(error)?.maintenance {
+        return Err("Wait for the browser data operation to finish.".into());
+    }
+    site::content(app)?
+        .navigate(site::url("/login/qrcode"))
+        .map_err(error)
+}
+
+#[tauri::command]
 async fn clear_tiktok_data(webview: Webview, sign_out: bool) -> Result<(), String> {
     check_shell(&webview)?;
     let app = webview.app_handle();
@@ -255,7 +267,11 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updates::UpdateState::default())
         .invoke_handler(tauri::generate_handler![
-            get_settings, save_settings, layout, clear_tiktok_data
+            get_settings,
+            save_settings,
+            layout,
+            open_qr_sign_in,
+            clear_tiktok_data
         ])
         .setup(|app| {
             let data = app.path().app_local_data_dir()?;

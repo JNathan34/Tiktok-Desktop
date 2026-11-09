@@ -77,7 +77,8 @@ select, .row button, #dismiss-notice { flex: none; background: var(--surface); b
 .keys dd { margin: 0; text-align: right; }
 .hint, .fine-print { color: var(--muted); font-size: 12px; margin: 12px 1px 0; }
 .fine-print { margin-top: 25px; }
-#notice-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; background: var(--card); border-top: 1px solid var(--line); }
+#notice-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 14px; background: var(--card); border-top: 1px solid var(--line); }
+.notice-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 720px) {
   .panel-inner { padding-inline: 17px; }
 }

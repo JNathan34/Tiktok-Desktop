@@ -4,6 +4,6 @@
   "local": true,
   "webviews": ["shell"],
   "permissions": [
-    "allow-get-settings", "allow-save-settings", "allow-layout", "allow-clear-tiktok-data"
+    "allow-get-settings", "allow-save-settings", "allow-layout", "allow-open-qr-sign-in", "allow-clear-tiktok-data"
   ]
 }

@@ -58,10 +58,10 @@ The app checks GitHub Releases once per launch and asks before installing a newe
 
 ## Site and security boundaries
 
-- The website controls feed availability, account actions, challenges, region restrictions and login methods. External OAuth windows and off-site links are blocked. For a Google-linked account, open TikTok’s QR sign-in and scan the code with the TikTok app on a phone already signed into that account. TikTok’s phone or email sign-in is also available for accounts with those methods set up.
+- The website controls feed availability, account actions, challenges, region restrictions and login methods. External OAuth windows and off-site links are blocked. If a sign-in popup is blocked, select **Use QR code** to open TikTok’s sign-in page inside the app. Scan with a phone already signed in to the TikTok account you want to use. TikTok’s phone or email sign-in is also available for accounts with those methods set up.
 - The layout preserves TikTok’s own player and interaction UI, including the navigation the site chooses to render. The shell follows your theme and sends a colour preference to WebView2. TikTok may apply its own saved theme.
 - The local shell uses an in-private WebView2 profile. TikTok uses the persistent profile, with one WebView2 browser environment shared between the surfaces. The site may request subresources from its media and service hosts. Top-level navigation is limited to known TikTok HTTPS hosts and the neutral blank document used for startup and local sign-out.
-- Only the bundled shell webview receives the four declared Tauri command permissions. Each command also checks the caller’s webview label and local origin. WebView2 web messaging is disabled on the remote controller. Website-initiated downloads and requests for browser permissions are denied. Same-site popups with a known URL can open in the existing site surface.
+- Only the bundled shell webview receives the declared Tauri command permissions. Each command also checks the caller’s webview label and local origin. WebView2 web messaging is disabled on the remote controller. Website-initiated downloads and requests for browser permissions are denied. Same-site popups with a known URL can open in the existing site surface.
 - Site routes are in `src-tauri/src/site.rs`. Playback shortcuts use standard media elements in `playback.js`. These are the areas to check after a TikTok layout change.
 
 
