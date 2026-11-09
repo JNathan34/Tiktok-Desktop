@@ -1,6 +1,6 @@
 [package]
 name = "tiktok-desktop"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Unofficial TikTok desktop client for Windows"
 
@@ -8,6 +8,8 @@ description = "Unofficial TikTok desktop client for Windows"
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
+tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy"] }
+tauri-plugin-dialog = "2"
 tauri = { version = "=2.12.5", features = ["unstable", "tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

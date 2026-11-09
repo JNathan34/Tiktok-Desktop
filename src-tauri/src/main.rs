@@ -3,6 +3,7 @@
 mod media_controls;
 mod settings;
 mod site;
+mod updates;
 mod windows_host;
 
 use serde::Deserialize;
@@ -212,7 +213,9 @@ fn on_fullscreen(window: &Window, fullscreen: bool) {
 
 fn install_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let settings = MenuItem::with_id(app, "tray-settings", "Settings", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&settings])?;
+    let check_updates =
+        MenuItem::with_id(app, "tray-updates", "Check for updates", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&settings, &check_updates])?;
     let size = unsafe {
         windows::Win32::UI::WindowsAndMessaging::GetSystemMetrics(
             windows::Win32::UI::WindowsAndMessaging::SM_CXSMICON,
@@ -225,7 +228,13 @@ fn install_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .tooltip("TikTok Desktop")
         .menu(&menu)
         .on_menu_event(|app, event| {
-            if event.id().as_ref() == "tray-settings" {
+            if event.id().as_ref() == "tray-updates" {
+                if let Some(window) = app.get_window("desktop") {
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+                updates::check(app, true);
+            } else if event.id().as_ref() == "tray-settings" {
                 if let Some(shell) = app.get_webview(SHELL) {
                     let window = shell.window();
                     if window.is_minimized().unwrap_or(false) {
@@ -242,6 +251,9 @@ fn install_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updates::UpdateState::default())
         .invoke_handler(tauri::generate_handler![
             get_settings, save_settings, layout, clear_tiktok_data
         ])
@@ -347,6 +359,7 @@ fn main() {
             install_tray(app)?;
             window.show()?;
             view.set_focus()?;
+            updates::check(app.handle(), false);
             Ok(())
         })
         .run(tauri::generate_context!())

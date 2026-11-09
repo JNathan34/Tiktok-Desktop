@@ -33,8 +33,8 @@ Install Node.js 22 or later, Rust stable with its MSVC toolchain, Microsoft C++ 
 npm ci
 rustup target add x86_64-pc-windows-msvc aarch64-pc-windows-msvc
 npm run build
-npm run tauri -- build --target x86_64-pc-windows-msvc
-npm run tauri -- build --target aarch64-pc-windows-msvc
+npm run tauri -- build --target x86_64-pc-windows-msvc --config "$PWD/src-tauri/tauri.local.conf.json"
+npm run tauri -- build --target aarch64-pc-windows-msvc --config "$PWD/src-tauri/tauri.local.conf.json"
 ```
 
 Build output is under `src-tauri/target/<target>/release/`. The NSIS installer is under `bundle/nsis/` inside that release folder. To run the Rust security test on your native architecture, build the frontend first and run `cargo test --manifest-path src-tauri/Cargo.toml`. To launch a development build with the same bundled-origin restrictions, use `npm run tauri -- dev --no-dev-server`.
@@ -42,6 +42,19 @@ Build output is under `src-tauri/target/<target>/release/`. The NSIS installer i
 - [Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows)
 - [Tauri Windows installer documentation](https://v2.tauri.app/distribute/windows-installer/)
 - [Microsoft Evergreen WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+
+## Updates
+
+The app checks GitHub Releases once per launch and asks before installing a newer version. **Check for updates** is also available from the tray icon. The app verifies the installer's updater signature before running it. Users upgrading from v0.1.0 need to install v0.1.1 manually once.
+
+## Publishing a release
+
+1. Update the version in the Tauri config, Rust package and npm package.
+2. Use the existing updater signing key for both architecture builds. Supply its path with `TAURI_SIGNING_PRIVATE_KEY` and its password with `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the build environment. Store the key and password outside the repository. Installed copies trust the public key in the Tauri config.
+3. Run the two Tauri build commands without the local config overlay. Copy each NSIS installer and its matching `.sig` into one release folder. Name the installers `TikTok-Desktop-<version>-arm64-setup.exe` and `TikTok-Desktop-<version>-x64-setup.exe`, with `.sig` appended to the matching signature files.
+4. Run `node tools/make-update-manifest.mjs <release-folder>`. Attach both installers and the resulting `latest.json` to the same GitHub release tagged `v<version>`. Publish it as the latest release.
+
+[Tauri updater signing and manifest documentation](https://v2.tauri.app/plugin/updater/)
 
 ## Site and security boundaries
 
