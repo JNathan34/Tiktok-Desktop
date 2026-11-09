@@ -23,7 +23,7 @@ In **Settings → Display**, **Video only** hides the feed controls and details 
 | System tray → Settings or Ctrl+, | Open app settings |
 | Alt+F4 | Close the window |
 
-Playback keys defer to text inputs, interactive elements and site handlers. The app pauses HTML media while Settings is open. With **Pause when minimised** enabled, it also pauses on Windows minimise and leaves playback paused on restore. **Clear disk cache** preserves cookies and site storage. **Log out locally** clears the app’s TikTok profile after unloading the active site. The hardware acceleration preference applies at the next launch and WebView2 chooses the decoder for each video.
+Space toggles the current video even when the playback bar is hidden. Text fields and keyboard-focused buttons retain their normal Space behavior. The app pauses HTML media while Settings is open. With **Pause when minimised** enabled, it also pauses on Windows minimise and leaves playback paused on restore. **Clear disk cache** preserves cookies and site storage. **Log out locally** clears the app’s TikTok profile after unloading the active site. The hardware acceleration preference applies at the next launch and WebView2 chooses the decoder for each video.
 
 ## Build from source
 
