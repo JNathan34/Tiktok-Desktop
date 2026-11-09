@@ -1,0 +1,21 @@
+[package]
+name = "tiktok-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "Unofficial TikTok desktop client for Windows"
+
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.5", features = ["unstable", "tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+webview2-com = "0.39"
+windows = { version = "0.62", features = ["Foundation", "Media", "Win32_System_WinRT", "Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }
+
+[profile.release]
+codegen-units = 1
+opt-level = "s"
+lto = "thin"
+strip = true

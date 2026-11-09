@@ -1,0 +1,9 @@
+{
+  "identifier": "shell-only",
+  "description": "Only the bundled shell webview may use this client's fixed commands.",
+  "local": true,
+  "webviews": ["shell"],
+  "permissions": [
+    "allow-get-settings", "allow-save-settings", "allow-layout", "allow-clear-tiktok-data"
+  ]
+}
