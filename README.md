@@ -27,6 +27,7 @@ The app ships with a round desktop icon. To use your own icon for the window and
 | System tray → Settings or Ctrl+, | Open app settings |
 | System tray → Always on top | Keep the TikTok window above other windows |
 | System tray → Open TikTok / Quit TikTok Desktop | Restore or close the app |
+| Settings → Keyboard and mouse → Show or hide TikTok | Set a global shortcut to hide or restore the window while the app is running |
 | Alt+F4 | Close the window |
 
 Space toggles the current video even when the playback bar is hidden. Text fields and keyboard-focused buttons retain their normal Space behavior. The app pauses HTML media while Settings is open. With **Pause when minimised** enabled, it also pauses on Windows minimise and leaves playback paused on restore. **Clear disk cache** preserves cookies and site storage. **Log out locally** clears the app’s TikTok profile after unloading the active site. The hardware acceleration preference applies at the next launch and WebView2 chooses the decoder for each video.

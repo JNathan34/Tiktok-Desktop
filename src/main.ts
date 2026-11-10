@@ -23,7 +23,14 @@ const defaultDisplay: DisplaySettings = {
   videoFit: "site",
 };
 
+interface WindowShortcut {
+  modifiers: number;
+  key: number;
+}
+
 interface Settings {
+  windowShortcut: WindowShortcut | null;
+  shortcutActive: boolean;
   display: DisplaySettings;
   theme: Theme;
   pauseMinimized: boolean;
@@ -59,6 +66,18 @@ const displayToggles = [
 ] as const;
 const pageZoom = element<HTMLSelectElement>("page-zoom");
 const videoFit = element<HTMLSelectElement>("video-fit");
+const shortcutModifiers = element<HTMLSelectElement>("shortcut-modifiers");
+const shortcutKey = element<HTMLSelectElement>("shortcut-key");
+const shortcutStatus = element("shortcut-status");
+const saveShortcut = element<HTMLButtonElement>("save-shortcut");
+const clearShortcut = element<HTMLButtonElement>("clear-shortcut");
+for (const label of "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") {
+  shortcutKey.add(new Option(label, String(label.charCodeAt(0))));
+}
+for (let number = 1; number <= 11; number++) {
+  shortcutKey.add(new Option("F" + number, String(111 + number)));
+}
+shortcutKey.value = "84";
 
 let settingsOpen = false;
 let settings: Settings | undefined;
@@ -111,6 +130,42 @@ async function showSettings(open: boolean) {
   if (settingsOpen && open) element("settings-title").focus();
 }
 
+function renderShortcut() {
+  if (!settings) return;
+  const shortcut = settings.windowShortcut;
+  clearShortcut.disabled = !shortcut;
+  shortcutStatus.textContent = "Shortcut is off.";
+  if (!shortcut) return;
+  shortcutModifiers.value = String(shortcut.modifiers);
+  shortcutKey.value = String(shortcut.key);
+  const keys = [shortcut.modifiers & 2 ? "Ctrl" : "", shortcut.modifiers & 1 ? "Alt" : "",
+    shortcut.modifiers & 4 ? "Shift" : "", shortcutKey.selectedOptions[0]?.text ?? ""].filter(Boolean).join(" + ");
+  shortcutStatus.textContent = settings.shortcutActive ? "Active: " + keys : "Unavailable: " + keys;
+}
+
+async function changeShortcut(shortcut: WindowShortcut | null) {
+  if (!settings) return;
+  saveShortcut.disabled = clearShortcut.disabled = true;
+  try {
+    await tauri.invoke("set_window_shortcut", { shortcut });
+    settings.windowShortcut = shortcut;
+    settings.shortcutActive = shortcut !== null;
+    renderShortcut();
+  } catch (error) {
+    shortcutStatus.textContent = (typeof error === "string" ? error : "Could not change the shortcut.")
+      + (settings.shortcutActive ? " Your previous shortcut is still active." : "");
+    clearShortcut.disabled = !settings.windowShortcut;
+  } finally {
+    saveShortcut.disabled = false;
+  }
+}
+
+saveShortcut.addEventListener("click", () => void changeShortcut({
+  modifiers: Number(shortcutModifiers.value),
+  key: Number(shortcutKey.value),
+}));
+clearShortcut.addEventListener("click", () => void changeShortcut(null));
+
 function renderSettings() {
   if (!settings) return;
   document.documentElement.dataset.theme = settings.theme;
@@ -133,7 +188,7 @@ function update(patch: Partial<Settings>, display?: Partial<DisplaySettings>) {
     const next = { ...settings, ...patch, display: { ...settings.display, ...display } };
     try {
       const restart = await tauri.invoke<boolean>("save_settings", { settings: next });
-      settings = next;
+      settings = { ...next, windowShortcut: settings.windowShortcut, shortcutActive: settings.shortcutActive };
       element("gpu-note").textContent = restart
         ? "Restart TikTok Desktop to apply this change."
         : "Use the GPU when supported. Changes apply after restart.";
@@ -215,4 +270,5 @@ window.addEventListener("resize", scheduleLayout);
 tauri.invoke<Settings>("get_settings").then((value) => {
   settings = value;
   renderSettings();
+  renderShortcut();
 }).catch(report);

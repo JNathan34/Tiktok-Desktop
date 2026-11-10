@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_icon;
+mod hotkey;
 mod media_controls;
 mod settings;
 mod site;
@@ -8,7 +9,7 @@ mod tray;
 mod updates;
 mod windows_host;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use settings::{Preferences, Settings};
 use site::{CONTENT, SHELL};
 use std::sync::Mutex;
@@ -30,6 +31,7 @@ struct Pane {
 struct PaneState {
     pane: Option<Pane>,
     minimized: bool,
+    hidden: bool,
     fullscreen: bool,
     maintenance: bool,
 }
@@ -73,7 +75,10 @@ fn sync_media(app: &AppHandle) {
         .expect("preferences")
         .pause_minimized;
     if let Ok(view) = site::content(app) {
-        let suspend = state.pane.is_none() || state.maintenance || (state.minimized && auto_pause);
+        let suspend = state.pane.is_none()
+            || state.hidden
+            || state.maintenance
+            || (state.minimized && auto_pause);
         let script = if suspend {
             "window.dispatchEvent(new Event('desktop-media-suspend'))"
         } else {
@@ -83,10 +88,33 @@ fn sync_media(app: &AppHandle) {
     }
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SettingsSnapshot {
+    #[serde(flatten)]
+    settings: Settings,
+    shortcut_active: bool,
+}
+
 #[tauri::command]
-fn get_settings(webview: Webview, preferences: State<Preferences>) -> Result<Settings, String> {
+fn get_settings(
+    webview: Webview,
+    preferences: State<Preferences>,
+) -> Result<SettingsSnapshot, String> {
     check_shell(&webview)?;
-    Ok(*preferences.current.lock().map_err(error)?)
+    Ok(SettingsSnapshot {
+        settings: *preferences.current.lock().map_err(error)?,
+        shortcut_active: webview.app_handle().state::<hotkey::Hotkey>().is_active(),
+    })
+}
+
+#[tauri::command]
+fn set_window_shortcut(webview: Webview, shortcut: Option<hotkey::Shortcut>) -> Result<(), String> {
+    check_shell(&webview)?;
+    webview
+        .app_handle()
+        .state::<hotkey::Hotkey>()
+        .change(&webview.window(), shortcut)
 }
 
 #[tauri::command]
@@ -102,6 +130,7 @@ fn save_settings(
     {
         let mut current = preferences.current.lock().map_err(error)?;
         settings.always_on_top = current.always_on_top;
+        settings.window_shortcut = current.window_shortcut;
         settings::persist(&preferences.file, &settings).map_err(error)?;
         *current = settings;
     }
@@ -194,6 +223,27 @@ async fn clear_tiktok_data(webview: Webview, sign_out: bool) -> Result<(), Strin
     result
 }
 
+fn show_window(window: &Window) {
+    if window.show().is_err() {
+        return;
+    }
+    let _ = window.unminimize();
+    let app = window.app_handle();
+    app.state::<ViewState>().lock().expect("view state").hidden = false;
+    sync_media(app);
+    let _ = window.set_focus();
+}
+
+fn toggle_window(window: &Window) {
+    if !window.is_visible().unwrap_or(false) || window.is_minimized().unwrap_or(false) {
+        show_window(window);
+    } else if window.hide().is_ok() {
+        let app = window.app_handle();
+        app.state::<ViewState>().lock().expect("view state").hidden = true;
+        sync_media(app);
+    }
+}
+
 fn on_minimized(window: &Window, minimized: bool) {
     let app = window.app_handle();
     let state = app.state::<ViewState>();
@@ -229,8 +279,10 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updates::UpdateState::default())
+        .manage(hotkey::Hotkey::default())
         .invoke_handler(tauri::generate_handler![
             get_settings,
+            set_window_shortcut,
             save_settings,
             layout,
             open_qr_sign_in,
@@ -332,6 +384,11 @@ fn main() {
                 view.hide()?;
             }
             windows_host::configure(&window, &view, initial)?;
+            if let Some(shortcut) = initial.window_shortcut {
+                if let Err(err) = app.state::<hotkey::Hotkey>().start(&window, shortcut) {
+                    eprintln!("Window shortcut unavailable: {err}");
+                }
+            }
             window.on_window_event({
                 let window = window.clone();
                 move |event| {

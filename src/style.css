@@ -74,6 +74,8 @@ select, .row button, #dismiss-notice { flex: none; background: var(--surface); b
 .switch:checked { background: var(--accent); border-color: var(--accent); }
 .switch:checked::before { background: var(--surface); transform: translateX(14px); }
 .keys { margin: 0; font-size: 13px; }
+.shortcut-row, .shortcut-controls { flex-wrap: wrap; }
+.shortcut-controls { display: flex; gap: 6px; }
 .keys dd { margin: 0; text-align: right; }
 .hint, .fine-print { color: var(--muted); font-size: 12px; margin: 12px 1px 0; }
 .fine-print { margin-top: 25px; }

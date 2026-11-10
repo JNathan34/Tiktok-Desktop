@@ -1,4 +1,5 @@
 use crate::{
+    hotkey,
     settings::{Settings, Theme},
     site,
 };
@@ -16,7 +17,7 @@ use windows::{
         UI::{
             Input::KeyboardAndMouse::{GetKeyState, VK_CONTROL, VK_MENU, VK_OEM_COMMA, VK_SHIFT},
             Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
-            WindowsAndMessaging::{SIZE_MINIMIZED, WM_NCDESTROY, WM_SIZE},
+            WindowsAndMessaging::{SIZE_MINIMIZED, WM_HOTKEY, WM_NCDESTROY, WM_SIZE},
         },
     },
 };
@@ -33,10 +34,17 @@ unsafe extern "system" fn observe_window(
 ) -> LRESULT {
     // The pointer belongs to this subclass and lives until WM_NCDESTROY on this UI thread.
     if msg == WM_NCDESTROY {
+        hotkey::release(hwnd);
         unsafe {
             let _ = RemoveWindowSubclass(hwnd, Some(observe_window), id);
             drop(Box::from_raw(data as *mut Window));
         }
+    } else if msg == WM_HOTKEY {
+        let window = unsafe { &*(data as *const Window) };
+        window
+            .app_handle()
+            .state::<hotkey::Hotkey>()
+            .handle(window, wparam.0);
     } else if msg == WM_SIZE {
         let window = unsafe { &*(data as *const Window) };
         crate::on_minimized(window, wparam.0 == SIZE_MINIMIZED as usize);

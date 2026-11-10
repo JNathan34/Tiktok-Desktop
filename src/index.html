@@ -55,6 +55,26 @@
         </div>
       </div>
       <h2>Keyboard and mouse</h2>
+      <div class="card">
+        <div class="row shortcut-row">
+          <div>
+            <strong>Show or hide TikTok</strong>
+            <small>Use your shortcut from any app while TikTok Desktop is in the tray.</small>
+            <small id="shortcut-status" role="status">Shortcut is off.</small>
+          </div>
+          <div class="shortcut-controls">
+            <select id="shortcut-modifiers" aria-label="Shortcut modifiers">
+              <option value="3">Ctrl + Alt</option><option value="6">Ctrl + Shift</option>
+              <option value="5">Alt + Shift</option><option value="7">Ctrl + Alt + Shift</option>
+              <option value="2">Ctrl</option><option value="1">Alt</option>
+              <option value="4">Shift</option><option value="0">No modifiers</option>
+            </select>
+            <select id="shortcut-key" aria-label="Shortcut key"></select>
+            <button id="save-shortcut" type="button">Save</button>
+            <button id="clear-shortcut" type="button" disabled>Clear</button>
+          </div>
+        </div>
+      </div>
       <dl class="card keys">
         <div class="row"><dt>Settings</dt><dd><kbd>Ctrl ,</kbd></dd></div>
         <div class="row"><dt>Next or previous video, on the feed</dt><dd><kbd>↑</kbd> <kbd>↓</kbd> or scroll</dd></div>

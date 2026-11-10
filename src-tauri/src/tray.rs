@@ -34,8 +34,7 @@ fn toggle_always_on_top(app: &AppHandle, item: &CheckMenuItem<tauri::Wry>) -> Re
 
 fn show_window(app: &AppHandle) {
     if let Some(window) = app.get_window("desktop") {
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+        crate::show_window(&window);
     }
 }
 
