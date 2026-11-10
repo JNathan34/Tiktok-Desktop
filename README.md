@@ -68,13 +68,15 @@ The installer uses Microsoft Edge WebView2 and can download its bootstrapper if 
 | Shortcut | Action |
 | --- | --- |
 | Mouse wheel, **↑** or **↓** | Move between feed videos |
+| **Ctrl + Shift + ↑ / ↓** | Go to the previous or next TikTok from any app |
+| **Ctrl + Shift + ← / →** | Seek back or forward five seconds from any app |
 | **Space** | Play or pause the current video |
 | **M** | Toggle mute |
 | **F** or **Esc** | Enter or leave fullscreen |
 | **Ctrl + ,** | Open Settings |
 | **Alt + F4** | Close the app |
 
-Playback shortcuts work when the TikTok view has focus and leave text entry and keyboard-focused controls available. Windows media controls can also play or pause the visible video.
+The Ctrl + Shift arrow shortcuts work while TikTok Desktop is running. Settings shows any combinations Windows could not register. The single-key playback shortcuts work when the TikTok view has focus and leave text entry and keyboard-focused controls available. Windows media controls can also play or pause the visible video.
 
 ## Make the window fit
 

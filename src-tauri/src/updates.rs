@@ -73,6 +73,7 @@ fn offer_update(app: AppHandle, update: Update) {
         ));
     prompt.show(move |accepted| {
         if accepted {
+            crate::remember_window(&window);
             tauri::async_runtime::spawn(async move {
                 if let Err(error) = update.download_and_install(|_, _| {}, || {}).await {
                     eprintln!("Update installation failed: {error}");

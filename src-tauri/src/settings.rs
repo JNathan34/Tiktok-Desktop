@@ -107,8 +107,8 @@ impl Preferences {
     }
 }
 
-pub fn persist(path: &Path, settings: &Settings) -> io::Result<()> {
-    let next = path.with_extension("tmp");
-    fs::write(&next, serde_json::to_vec_pretty(settings)?)?;
+pub fn persist(path: &Path, value: &impl Serialize) -> io::Result<()> {
+    let next = path.with_extension(format!("{}.tmp", std::process::id()));
+    fs::write(&next, serde_json::to_vec_pretty(value)?)?;
     fs::rename(next, path)
 }

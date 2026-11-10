@@ -9,6 +9,13 @@
     if (suspended && event.target instanceof HTMLMediaElement) event.target.pause();
   }, true);
 
+  function visibleArea(element) {
+    const box = element.getBoundingClientRect();
+    const width = Math.min(box.right, innerWidth) - Math.max(0, box.left);
+    const height = Math.min(box.bottom, innerHeight) - Math.max(0, box.top);
+    return width > 0 && height > 0 && element.checkVisibility() ? width * height : 0;
+  }
+
   function visibleVideo() {
     if (document.fullscreenElement instanceof HTMLVideoElement) return document.fullscreenElement;
     let best;
@@ -16,14 +23,12 @@
     let inFeed = false;
     for (const video of document.querySelectorAll("video")) {
       if (video.readyState < 1) continue;
-      const box = video.getBoundingClientRect();
-      const width = Math.min(box.right, innerWidth) - Math.max(0, box.left);
-      const height = Math.min(box.bottom, innerHeight) - Math.max(0, box.top);
-      if (width <= 0 || height <= 0 || !video.checkVisibility()) continue;
+      const size = visibleArea(video);
+      if (!size) continue;
       const isFeedVideo = Boolean(video.closest('[data-e2e="feed-video"]'));
-      if ((isFeedVideo && !inFeed) || (isFeedVideo === inFeed && width * height > area)) {
+      if ((isFeedVideo && !inFeed) || (isFeedVideo === inFeed && size > area)) {
         inFeed = isFeedVideo;
-        area = width * height;
+        area = size;
         best = video;
       }
     }
@@ -34,6 +39,51 @@
     if (!suspended) visibleVideo()?.play().catch(() => {});
   });
   window.addEventListener("desktop-media-pause", pause);
+
+  function stepFeed(direction) {
+    const selectors = direction > 0
+      ? '[data-e2e="feed-navigation-next"]'
+      : '[data-e2e="feed-navigation-prev"], [data-e2e="feed-navigation-previous"]';
+    const buttons = [...document.querySelectorAll(`:is(${selectors}):not(:disabled):not([aria-disabled=true])`)];
+    const button = buttons.find((candidate) => candidate.checkVisibility()) ?? buttons[0];
+    if (button) {
+      button.click();
+      return;
+    }
+
+    const feed = document.querySelector('[class*="--DivColumnListContainer"]');
+    const items = [...(feed ?? document).querySelectorAll('[data-e2e="recommend-list-item-container"]')];
+    let active = -1;
+    let area = 0;
+    items.forEach((item, index) => {
+      const size = visibleArea(item);
+      if (size > area) {
+        area = size;
+        active = index;
+      }
+    });
+    if (active < 0) return;
+    const target = items[active + direction];
+    if (target) target.scrollIntoView({ block: "start", inline: "nearest", behavior: "instant" });
+    else feed?.scrollBy({ top: direction * feed.clientHeight, behavior: "instant" });
+  }
+
+  function seek(seconds) {
+    const video = visibleVideo();
+    if (!video || !Number.isFinite(video.duration) || !video.seekable.length) return;
+    const desired = video.currentTime + seconds;
+    let nearest = video.seekable.start(0);
+    for (let index = 0; index < video.seekable.length; index++) {
+      const candidate = Math.max(video.seekable.start(index), Math.min(desired, video.seekable.end(index)));
+      if (Math.abs(candidate - desired) < Math.abs(nearest - desired)) nearest = candidate;
+    }
+    video.currentTime = nearest;
+  }
+
+  window.addEventListener("desktop-media-previous", () => stepFeed(-1));
+  window.addEventListener("desktop-media-next", () => stepFeed(1));
+  window.addEventListener("desktop-media-rewind", () => seek(-5));
+  window.addEventListener("desktop-media-forward", () => seek(5));
 
   const controls = 'button, a, [role="button"], [role="link"], [role="menuitem"], [role="checkbox"], [role="switch"], [role="tab"]';
   let pointerControl;

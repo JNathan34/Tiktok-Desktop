@@ -31,6 +31,7 @@ interface WindowShortcut {
 interface Settings {
   windowShortcut: WindowShortcut | null;
   shortcutActive: boolean;
+  unavailablePlaybackShortcuts: string[];
   display: DisplaySettings;
   theme: Theme;
   pauseMinimized: boolean;
@@ -147,9 +148,8 @@ async function changeShortcut(shortcut: WindowShortcut | null) {
   if (!settings) return;
   saveShortcut.disabled = clearShortcut.disabled = true;
   try {
-    await tauri.invoke("set_window_shortcut", { shortcut });
-    settings.windowShortcut = shortcut;
-    settings.shortcutActive = shortcut !== null;
+    settings.windowShortcut = await tauri.invoke<WindowShortcut | null>("set_window_shortcut", { shortcut });
+    settings.shortcutActive = settings.windowShortcut !== null;
     renderShortcut();
   } catch (error) {
     shortcutStatus.textContent = (typeof error === "string" ? error : "Could not change the shortcut.")
@@ -168,6 +168,10 @@ clearShortcut.addEventListener("click", () => void changeShortcut(null));
 
 function renderSettings() {
   if (!settings) return;
+  const unavailable = settings.unavailablePlaybackShortcuts ?? [];
+  element("playback-shortcut-status").textContent = unavailable.length
+    ? "Windows could not register Ctrl + Shift with " + unavailable.join(", ") + "."
+    : "Works from other apps while TikTok Desktop is running.";
   document.documentElement.dataset.theme = settings.theme;
   theme.value = settings.theme;
   pause.checked = settings.pauseMinimized;

@@ -17,7 +17,7 @@ use windows::{
         UI::{
             Input::KeyboardAndMouse::{GetKeyState, VK_CONTROL, VK_MENU, VK_OEM_COMMA, VK_SHIFT},
             Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
-            WindowsAndMessaging::{SIZE_MINIMIZED, WM_HOTKEY, WM_NCDESTROY, WM_SIZE},
+            WindowsAndMessaging::{SIZE_MINIMIZED, WM_EXITSIZEMOVE, WM_HOTKEY, WM_NCDESTROY, WM_SIZE},
         },
     },
 };
@@ -48,6 +48,9 @@ unsafe extern "system" fn observe_window(
     } else if msg == WM_SIZE {
         let window = unsafe { &*(data as *const Window) };
         crate::on_minimized(window, wparam.0 == SIZE_MINIMIZED as usize);
+    } else if msg == WM_EXITSIZEMOVE {
+        let window = unsafe { &*(data as *const Window) };
+        crate::remember_window(window);
     }
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
 }

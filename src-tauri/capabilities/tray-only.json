@@ -1,0 +1,7 @@
+{
+  "identifier": "tray-only",
+  "description": "The bundled tray popup can read its state and run its fixed actions.",
+  "local": true,
+  "webviews": ["tray-popup"],
+  "permissions": ["allow-tray-state", "allow-tray-action"]
+}

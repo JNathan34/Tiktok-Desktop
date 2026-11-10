@@ -7,6 +7,7 @@ mod settings;
 mod site;
 mod tray;
 mod updates;
+mod window_placement;
 mod windows_host;
 
 use serde::{Deserialize, Serialize};
@@ -16,8 +17,9 @@ use std::sync::Mutex;
 use tauri::{
     webview::{NewWindowResponse, PageLoadEvent, WebviewBuilder},
     window::WindowBuilder,
-    AppHandle, LogicalPosition, LogicalSize, Manager, Rect, State, Webview, WebviewUrl, Window,
+    AppHandle, LogicalPosition, LogicalSize, Manager, Rect, RunEvent, State, Webview, WebviewUrl, Window,
 };
+use window_placement::WindowPlacement;
 
 #[derive(Clone, Copy, Deserialize)]
 struct Pane {
@@ -94,6 +96,7 @@ struct SettingsSnapshot {
     #[serde(flatten)]
     settings: Settings,
     shortcut_active: bool,
+    unavailable_playback_shortcuts: Vec<&'static str>,
 }
 
 #[tauri::command]
@@ -102,19 +105,25 @@ fn get_settings(
     preferences: State<Preferences>,
 ) -> Result<SettingsSnapshot, String> {
     check_shell(&webview)?;
+    let hotkeys = webview.app_handle().state::<hotkey::Hotkey>();
     Ok(SettingsSnapshot {
         settings: *preferences.current.lock().map_err(error)?,
-        shortcut_active: webview.app_handle().state::<hotkey::Hotkey>().is_active(),
+        shortcut_active: hotkeys.is_active(),
+        unavailable_playback_shortcuts: hotkeys.unavailable_playback().to_vec(),
     })
 }
 
 #[tauri::command]
-fn set_window_shortcut(webview: Webview, shortcut: Option<hotkey::Shortcut>) -> Result<(), String> {
+fn set_window_shortcut(
+    webview: Webview,
+    shortcut: Option<hotkey::Shortcut>,
+) -> Result<Option<hotkey::Shortcut>, String> {
     check_shell(&webview)?;
     webview
         .app_handle()
         .state::<hotkey::Hotkey>()
-        .change(&webview.window(), shortcut)
+        .change(&webview.window(), shortcut)?;
+    Ok(shortcut)
 }
 
 #[tauri::command]
@@ -265,7 +274,17 @@ fn on_minimized(window: &Window, minimized: bool) {
     }
 }
 
+fn remember_window(window: &Window) {
+    let app = window.app_handle();
+    if app.state::<ViewState>().lock().is_ok_and(|state| !state.fullscreen) {
+        app.state::<WindowPlacement>().save(window);
+    }
+}
+
 fn on_fullscreen(window: &Window, fullscreen: bool) {
+    if fullscreen {
+        remember_window(window);
+    }
     let app = window.app_handle();
     let state = app.state::<ViewState>();
     let pane = {
@@ -296,7 +315,9 @@ fn main() {
             save_settings,
             layout,
             open_qr_sign_in,
-            clear_tiktok_data
+            clear_tiktok_data,
+            tray::tray_state,
+            tray::tray_action
         ])
         .setup(|app| {
             let data = app.path().app_local_data_dir()?;
@@ -305,8 +326,6 @@ fn main() {
             let initial = *preferences.current.lock().expect("preferences");
             app.manage(preferences);
 
-            let pane = Pane { x: 0.0, y: 0.0, width: 1120.0, height: 760.0 };
-            app.manage(Mutex::new(PaneState { pane: Some(pane), ..PaneState::default() }));
             let icon_path = data.join("app-icon.ico");
             let custom_icon = app_icon::load(&icon_path);
             let mut window = WindowBuilder::new(app, "desktop")
@@ -322,6 +341,18 @@ fn main() {
                 window = window.icon(icon)?;
             }
             let window = window.build()?;
+            let placement = WindowPlacement::load(data.join("window-placement.json"));
+            let maximize = placement.restore(&window);
+            app.manage(placement);
+            let size = window.inner_size()?.to_logical::<f64>(window.scale_factor()?);
+            let pane = Pane { x: 0.0, y: 0.0, width: size.width, height: size.height };
+            app.manage(Mutex::new(PaneState { pane: Some(pane), ..PaneState::default() }));
+            app.state::<hotkey::Hotkey>().start_playback(window.hwnd()?);
+            if let Some(shortcut) = initial.window_shortcut {
+                if let Err(err) = app.state::<hotkey::Hotkey>().start(&window, shortcut) {
+                    eprintln!("Window shortcut unavailable: {err}");
+                }
+            }
             if custom_icon.is_some() {
                 if let Some(icon) = app_icon::set_taskbar(&window, &icon_path) {
                     app.manage(icon);
@@ -373,7 +404,7 @@ fn main() {
                 })
                 .initialization_script(site::LIFECYCLE)
                 .initialization_script(site::display_script(initial.display))
-                .data_directory(profile)
+                .data_directory(profile.clone())
                 .additional_browser_args(args)
                 .disable_drag_drop_handler()
                 .general_autofill_enabled(false)
@@ -395,14 +426,15 @@ fn main() {
                 view.hide()?;
             }
             windows_host::configure(&window, &view, initial)?;
-            if let Some(shortcut) = initial.window_shortcut {
-                if let Err(err) = app.state::<hotkey::Hotkey>().start(&window, shortcut) {
-                    eprintln!("Window shortcut unavailable: {err}");
-                }
-            }
             window.on_window_event({
                 let window = window.clone();
                 move |event| {
+                    if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                        remember_window(&window);
+                    }
+                    if matches!(event, tauri::WindowEvent::Destroyed) {
+                        window.app_handle().exit(0);
+                    }
                     if let tauri::WindowEvent::Resized(size) = event {
                         if window.app_handle().state::<ViewState>().lock().expect("view state").fullscreen {
                             if let Ok(view) = site::content(window.app_handle()) {
@@ -415,8 +447,11 @@ fn main() {
                     }
                 }
             });
-            tray::install(app, custom_icon.as_ref(), initial)?;
+            tray::install(app, custom_icon.as_ref(), profile, args)?;
             window.show()?;
+            if maximize {
+                window.maximize()?;
+            }
             if initial.hide_from_taskbar {
                 window.set_skip_taskbar(true)?;
             }
@@ -424,6 +459,13 @@ fn main() {
             updates::check(app.handle(), false);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("TikTok Desktop failed");
+        .build(tauri::generate_context!())
+        .expect("TikTok Desktop failed")
+        .run(|app, event| {
+            if matches!(event, RunEvent::ExitRequested { .. }) {
+                if let Some(window) = app.get_window("desktop") {
+                    remember_window(&window);
+                }
+            }
+        });
 }

@@ -1,229 +1,252 @@
 use crate::{
-    app_icon, error,
-    settings::{self, Preferences, Settings},
+    app_icon, error, is_shell_url,
+    settings::{self, Preferences, Theme},
     site, updates,
 };
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use tauri::{
     image::Image,
-    menu::{CheckMenuItem, IconMenuItem, Menu, PredefinedMenuItem},
-    tray::TrayIconBuilder,
-    App, AppHandle, Manager, Window,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    webview::{NewWindowResponse, WebviewWindowBuilder},
+    App, AppHandle, Manager, PhysicalPosition, PhysicalSize, Rect, Webview, WebviewUrl, Window,
+    WindowEvent,
 };
-use windows::Win32::UI::WindowsAndMessaging::SM_CXSMICON;
+use windows::Win32::{
+    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+    UI::{
+        Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
+        WindowsAndMessaging::{
+            PostMessageW, SM_CXSMICON, WA_INACTIVE, WM_ACTIVATE, WM_CLOSE, WM_NCDESTROY,
+        },
+    },
+};
 
-enum WindowOption {
+const LABEL: &str = "tray-popup";
+const WIDTH: u32 = 312;
+const HEIGHT: u32 = 344;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Action {
+    Open,
+    Settings,
     AlwaysOnTop,
     HideFromTaskbar,
+    Updates,
+    Quit,
+    Dismiss,
 }
 
-fn toggle_window_option(
-    app: &AppHandle,
-    item: &CheckMenuItem<tauri::Wry>,
-    option: WindowOption,
-) -> Result<(), String> {
-    let window = app
-        .get_window("desktop")
-        .ok_or("TikTok window is unavailable.")?;
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MenuState {
+    theme: Theme,
+    always_on_top: bool,
+    hide_from_taskbar: bool,
+}
+
+fn is_tray_url(url: &tauri::Url) -> bool {
+    is_shell_url(url) && url.path() == "/tray.html"
+}
+
+fn tray_app(view: &Webview) -> Result<&AppHandle, String> {
+    if view.label() == LABEL && view.url().is_ok_and(|url| is_tray_url(&url)) {
+        Ok(view.app_handle())
+    } else {
+        Err("Only the local tray menu can run this command.".into())
+    }
+}
+
+fn menu_state(app: &AppHandle) -> Result<MenuState, String> {
     let preferences = app.state::<Preferences>();
+    let current = preferences.current.lock().map_err(error)?;
+    Ok(MenuState {
+        theme: current.theme,
+        always_on_top: current.always_on_top,
+        hide_from_taskbar: current.hide_from_taskbar,
+    })
+}
+
+#[tauri::command]
+pub fn tray_state(webview: Webview) -> Result<MenuState, String> {
+    menu_state(tray_app(&webview)?)
+}
+
+fn toggle_window_option(window: &Window, action: Action) -> Result<(), String> {
+    let preferences = window.app_handle().state::<Preferences>();
     let mut current = preferences.current.lock().map_err(error)?;
     let mut next = *current;
-    let (value, apply): (_, fn(&Window, bool) -> tauri::Result<()>) = match option {
-        WindowOption::AlwaysOnTop => (&mut next.always_on_top, Window::set_always_on_top),
-        WindowOption::HideFromTaskbar => (&mut next.hide_from_taskbar, Window::set_skip_taskbar),
+    let (value, apply): (_, fn(&Window, bool) -> tauri::Result<()>) = match action {
+        Action::AlwaysOnTop => (&mut next.always_on_top, Window::set_always_on_top),
+        Action::HideFromTaskbar => (&mut next.hide_from_taskbar, Window::set_skip_taskbar),
+        _ => unreachable!(),
     };
-    let checked = !*value;
-    *value = checked;
-    apply(&window, checked).map_err(error)?;
+    *value = !*value;
+    let checked = *value;
+    apply(window, checked).map_err(error)?;
     if let Err(err) = settings::persist(&preferences.file, &next) {
-        let _ = apply(&window, !checked);
+        let _ = apply(window, !checked);
         return Err(error(err));
     }
     *current = next;
-    item.set_checked(checked).map_err(error)
+    Ok(())
 }
 
-fn show_window(app: &AppHandle) {
-    if let Some(window) = app.get_window("desktop") {
-        crate::show_window(&window);
+#[tauri::command]
+pub fn tray_action(webview: Webview, action: Action) -> Result<MenuState, String> {
+    let app = tray_app(&webview)?;
+    let popup = webview.window();
+    match action {
+        Action::Dismiss => popup.hide().map_err(error)?,
+        Action::Quit => app.exit(0),
+        _ => {
+            let window = app
+                .get_window("desktop")
+                .ok_or("TikTok window is unavailable.")?;
+            match action {
+                Action::AlwaysOnTop | Action::HideFromTaskbar => {
+                    toggle_window_option(&window, action)?
+                }
+                Action::Open | Action::Settings | Action::Updates => {
+                    popup.hide().map_err(error)?;
+                    crate::show_window(&window);
+                    if matches!(action, Action::Settings) {
+                        if let Some(shell) = app.get_webview(site::SHELL) {
+                            let _ =
+                                shell.eval("window.dispatchEvent(new Event('desktop-settings'))");
+                        }
+                    } else if matches!(action, Action::Updates) {
+                        updates::check(app, true);
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+    menu_state(app)
+}
+
+fn show_popup(app: &AppHandle, anchor: Rect) -> tauri::Result<()> {
+    let Some(popup) = app.get_webview_window(LABEL) else {
+        return Ok(());
+    };
+    let icon = anchor.position.to_physical::<i32>(1.0);
+    let icon_size = anchor.size.to_physical::<i32>(1.0);
+    let monitor = popup
+        .monitor_from_point(f64::from(icon.x), f64::from(icon.y))?
+        .or(popup.primary_monitor()?);
+    if let Some(monitor) = monitor {
+        let scale = monitor.scale_factor();
+        let work = monitor.work_area();
+        let gap = (8.0 * scale).round() as i32;
+        let width = ((f64::from(WIDTH) * scale).round() as u32).min(work.size.width);
+        let height = ((f64::from(HEIGHT) * scale).round() as u32).min(work.size.height);
+        let x = (icon.x + (icon_size.width - width as i32) / 2).clamp(
+            work.position.x,
+            work.position.x + (work.size.width - width) as i32,
+        );
+        let above = icon.y - height as i32 - gap;
+        let y = if above >= work.position.y {
+            above
+        } else {
+            icon.y + icon_size.height + gap
+        };
+        let y = y.clamp(
+            work.position.y,
+            work.position.y + (work.size.height - height) as i32,
+        );
+        popup.set_position(PhysicalPosition::new(x, y))?;
+        popup.set_size(PhysicalSize::new(width, height))?;
+    }
+    popup.show()?;
+    popup.set_focus()?;
+    popup.as_ref().set_focus()?;
+    popup.eval("window.dispatchEvent(new Event('tray-opening'))")
+}
+
+unsafe extern "system" fn observe_popup(
+    hwnd: HWND,
+    message: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    id: usize,
+    _: usize,
+) -> LRESULT {
+    unsafe {
+        // Use native window activation. WebView focus can change within the popup.
+        if message == WM_ACTIVATE && (wparam.0 & 0xffff) == WA_INACTIVE as usize {
+            let _ = PostMessageW(Some(hwnd), WM_CLOSE, WPARAM(0), LPARAM(0));
+        } else if message == WM_NCDESTROY {
+            let _ = RemoveWindowSubclass(hwnd, Some(observe_popup), id);
+        }
+        DefSubclassProc(hwnd, message, wparam, lparam)
     }
 }
 
 pub fn install(
     app: &App,
     custom_icon: Option<&ico::IconDir>,
-    initial: Settings,
+    profile: PathBuf,
+    browser_args: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let size = app_icon::system_size(SM_CXSMICON);
-    let icon = match custom_icon.and_then(|icon| app_icon::frame(icon, size)) {
-        Some(icon) => icon,
-        None => Image::from_app_icon_resource(size)?,
+    let icon = |size| match custom_icon.and_then(|icon| app_icon::frame(icon, size)) {
+        Some(image) => Ok(image),
+        None => Image::from_app_icon_resource(size),
     };
-    let header = IconMenuItem::new(
-        app,
-        format!("TikTok Desktop  ·  v{}", app.package_info().version),
-        false,
-        Some(icon.clone()),
-        None::<&str>,
-    )?;
-    let action = |id, label, mask, colour| {
-        IconMenuItem::with_id(
-            app,
-            id,
-            label,
-            true,
-            Some(glyph(size, mask, colour)),
-            None::<&str>,
-        )
-    };
-    let open = action("tray-open", "Open TikTok", OPEN, [43, 117, 168])?;
-    let settings = action("tray-settings", "Settings", SETTINGS, [105, 101, 168])?;
-    let check_updates = action("tray-updates", "Check for updates", UPDATE, [31, 125, 107])?;
-    let quit = action("tray-quit", "Quit TikTok Desktop", QUIT, [164, 69, 92])?;
-    let always_on_top = CheckMenuItem::with_id(
-        app,
-        "tray-topmost",
-        "Always on top",
-        true,
-        initial.always_on_top,
-        None::<&str>,
-    )?;
-    let hide_from_taskbar = CheckMenuItem::with_id(
-        app,
-        "tray-taskbar",
-        "Hide from taskbar",
-        true,
-        initial.hide_from_taskbar,
-        None::<&str>,
-    )?;
-    let header_rule = PredefinedMenuItem::separator(app)?;
-    let window_rule = PredefinedMenuItem::separator(app)?;
-    let app_rule = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(
-        app,
-        &[
-            &header,
-            &header_rule,
-            &open,
-            &settings,
-            &window_rule,
-            &always_on_top,
-            &hide_from_taskbar,
-            &app_rule,
-            &check_updates,
-            &quit,
-        ],
-    )?;
+    let brand = icon(96)?;
+    let data = serde_json::json!({
+        "version": app.package_info().version.to_string(),
+        "width": brand.width(),
+        "height": brand.height(),
+        "pixels": brand.rgba(),
+    });
+    let popup = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("tray.html".into()))
+        .title("TikTok Desktop tray menu")
+        .inner_size(f64::from(WIDTH), f64::from(HEIGHT))
+        .visible(false)
+        .focused(false)
+        .decorations(false)
+        .resizable(false)
+        .skip_taskbar(true)
+        .always_on_top(true)
+        .data_directory(profile)
+        .additional_browser_args(browser_args)
+        .incognito(true)
+        .disable_drag_drop_handler()
+        .zoom_hotkeys_enabled(false)
+        .devtools(false)
+        .on_navigation(is_tray_url)
+        .on_new_window(|_, _| NewWindowResponse::Deny)
+        .initialization_script(format!("window.trayBrand = {data};"))
+        .build()?;
+    if !unsafe { SetWindowSubclass(popup.hwnd()?, Some(observe_popup), 1, 0) }.as_bool() {
+        return Err("Could not observe tray menu activation.".into());
+    }
+    let window = popup.clone();
+    popup.on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            let _ = window.hide();
+        }
+    });
 
     TrayIconBuilder::with_id("tiktok-desktop")
-        .icon(icon)
+        .icon(icon(app_icon::system_size(SM_CXSMICON))?)
         .tooltip("TikTok Desktop")
-        .menu(&menu)
-        .on_menu_event(move |app, event| match event.id().as_ref() {
-            "tray-open" => show_window(app),
-            "tray-settings" => {
-                show_window(app);
-                if let Some(shell) = app.get_webview(site::SHELL) {
-                    let _ = shell.eval("window.dispatchEvent(new Event('desktop-settings'))");
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left | MouseButton::Right,
+                button_state: MouseButtonState::Up,
+                rect,
+                ..
+            } = event
+            {
+                if let Err(err) = show_popup(tray.app_handle(), rect) {
+                    eprintln!("Could not open tray menu: {err}");
                 }
             }
-            "tray-topmost" => {
-                if let Err(err) =
-                    toggle_window_option(app, &always_on_top, WindowOption::AlwaysOnTop)
-                {
-                    eprintln!("Could not change Always on top: {err}");
-                }
-            }
-            "tray-taskbar" => {
-                if let Err(err) =
-                    toggle_window_option(app, &hide_from_taskbar, WindowOption::HideFromTaskbar)
-                {
-                    eprintln!("Could not change Hide from taskbar: {err}");
-                }
-            }
-            "tray-updates" => {
-                show_window(app);
-                updates::check(app, true);
-            }
-            "tray-quit" => app.exit(0),
-            _ => {}
         })
         .build(app)?;
     Ok(())
 }
-
-// Scale the monochrome menu artwork to the system menu icon size.
-fn glyph(size: u32, mask: &[&str; 12], [r, g, b]: [u8; 3]) -> Image<'static> {
-    let mut pixels = Vec::with_capacity((size * size * 4) as usize);
-    for y in 0..size {
-        let row = mask[(y * 12 / size) as usize].as_bytes();
-        for x in 0..size {
-            let alpha = if row[(x * 12 / size) as usize] == b'#' {
-                255
-            } else {
-                0
-            };
-            pixels.extend([r, g, b, alpha]);
-        }
-    }
-    Image::new_owned(pixels, size, size)
-}
-
-const OPEN: &[&str; 12] = &[
-    "............",
-    ".##########.",
-    ".#........#.",
-    ".#..#.....#.",
-    ".#..###...#.",
-    ".#..####..#.",
-    ".#..###...#.",
-    ".#..#.....#.",
-    ".#........#.",
-    ".##########.",
-    "............",
-    "............",
-];
-
-const SETTINGS: &[&str; 12] = &[
-    "............",
-    "............",
-    "..#...#...#.",
-    "..#...#...#.",
-    ".###..#...#.",
-    "..#..###..#.",
-    "..#...#..###",
-    "..#...#...#.",
-    "..#...#...#.",
-    "............",
-    "............",
-    "............",
-];
-
-const UPDATE: &[&str; 12] = &[
-    "............",
-    ".....##.....",
-    ".....##.....",
-    ".....##.....",
-    "...#.##.#...",
-    "....####....",
-    ".....##.....",
-    "............",
-    ".#........#.",
-    ".##########.",
-    "............",
-    "............",
-];
-
-const QUIT: &[&str; 12] = &[
-    "............",
-    ".######.....",
-    ".#..........",
-    ".#......#...",
-    ".#.......#..",
-    ".#...######.",
-    ".#.......#..",
-    ".#......#...",
-    ".#..........",
-    ".######.....",
-    "............",
-    "............",
-];
