@@ -7,7 +7,7 @@
 <p align="center">An independent Windows 11 app for watching TikTok with a compact player, custom display controls, and a native system tray menu.</p>
 
 <p align="center">
-  <a href="https://github.com/JNathan34/tiktok-desktop-windows/releases/latest"><strong>Download for Windows 11</strong></a>
+  <a href="https://github.com/JNathan34/Tiktok-Desktop/releases/latest"><strong>Download for Windows 11</strong></a>
   · <a href="#screenshots">Screenshots</a>
   · <a href="#quick-controls">Quick controls</a>
   · <a href="docs/building.md">Build from source</a>
