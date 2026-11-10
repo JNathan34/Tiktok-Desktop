@@ -1,80 +1,102 @@
-# TikTok Desktop
+<p align="center">
+  <img src="docs/images/app-icon.png" alt="TikTok Desktop app icon" width="88" height="88">
+</p>
 
-An independent Windows 11 client for the TikTok website. This project is unaffiliated with TikTok. The app uses a Rust/Tauri 2 host, two WebView2 surfaces in a single window, and a bundled TypeScript, HTML and CSS shell.
+<h1 align="center">TikTok Desktop</h1>
+
+<p align="center">An independent Windows 11 app for watching TikTok with a compact player, custom display controls, and a native system tray menu.</p>
+
+<p align="center">
+  <a href="https://github.com/JNathan34/tiktok-desktop-windows/releases/latest"><strong>Download for Windows 11</strong></a>
+  · <a href="#screenshots">Screenshots</a>
+  · <a href="#quick-controls">Quick controls</a>
+  · <a href="docs/building.md">Build from source</a>
+</p>
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="40%">
+      <a href="docs/images/compact-player.png"><img src="docs/images/compact-player.png" width="330" alt="TikTok Desktop in Video only mode playing an Earthrise sample in a compact window"></a>
+      <br><strong>Compact playback</strong><br>Video only mode with sample media.
+    </td>
+    <td align="center" valign="top" width="60%">
+      <a href="docs/images/display-settings.png"><img src="docs/images/display-settings.png" width="520" alt="TikTok Desktop display settings with switches to hide controls, page zoom, and video sizing"></a>
+      <br><strong>Display settings</strong><br>Hide individual controls and adjust zoom or video sizing.
+    </td>
+  </tr>
+</table>
+
+The playback screenshot uses [NASA’s Earthrise photograph](https://science.nasa.gov/resource/image-earthrise/) as sample media. Image courtesy of the Earth Science and Remote Sensing Unit, NASA Johnson Space Center. Photo ID AS08-14-2383.
 
 ## Install
 
-Download the installer for your PC from [GitHub Releases](https://github.com/JNathan34/tiktok-desktop-windows/releases/latest).
+1. Open the [latest release](https://github.com/JNathan34/tiktok-desktop-windows/releases/latest) and choose the installer for your PC.
 
-Choose the **ARM64** installer for Snapdragon Windows devices or the **x64** installer for Intel and AMD 64-bit Windows devices. Run the setup program and open **TikTok Desktop** from Start. Windows uses its Evergreen WebView2 Runtime. The setup program downloads the runtime bootstrapper if needed. The builds are unsigned and Windows may show a publisher warning.
+   | Windows PC | Installer under **Assets** |
+   | --- | --- |
+   | Snapdragon or another Windows on Arm device | File ending in `arm64-setup.exe` |
+   | Intel or AMD 64-bit device | File ending in `x64-setup.exe` |
 
-Use TikTok’s own **Log in** control to sign in. The app keeps the site’s browser session in its own profile. Use TikTok’s embedded controls for playback, likes, comments, sharing and creator profiles. TikTok fills the area below the standard Windows title bar. Use TikTok’s own navigation.
+2. Run the installer, then open **TikTok Desktop** from Start.
 
-In **Settings → Display**, **Hide TikTok sidebar** removes the navigation rail and gives its space to the player. **Video only** hides the feed controls and details together. The individual switches hide the sidebar, reactions, arrows, video details or playback bar. **Page zoom** changes the TikTok web view, and **Video sizing** can fit the whole video or fill the frame by cropping. The feed adjusts to narrow windows at the selected page zoom. **Reset display** restores the display defaults.
+The installer uses Microsoft Edge WebView2 and can download its bootstrapper if needed. Windows may display a publisher warning because the installers are Authenticode-unsigned. In-app updates have a separate signature that the app verifies.
 
-## App icon
+## Quick controls
 
-The app ships with a round desktop icon. To use your own icon for the window and tray, save a square Windows ICO file as `%LOCALAPPDATA%\com.tiktokdesk.client\app-icon.ico` and reopen the app. Use a multi-resolution ICO for high-DPI displays. You can also set the same file in the Windows shortcut properties for a pinned taskbar icon.
+<table>
+  <tr>
+    <td valign="top" width="55%">
+      <strong>Right-click the TikTok Desktop icon in the Windows system tray.</strong>
+      <ul>
+        <li><strong>Open TikTok</strong> restores the window.</li>
+        <li><strong>Settings</strong> opens display, playback, and keyboard options.</li>
+        <li><strong>Always on top</strong> keeps the window above other apps.</li>
+        <li><strong>Hide from taskbar</strong> removes the running taskbar button while the window stays open and playback continues.</li>
+        <li><strong>Check for updates</strong> checks GitHub Releases.</li>
+      </ul>
+    </td>
+    <td align="center" valign="top" width="45%">
+      <a href="docs/images/tray-menu.png"><img src="docs/images/tray-menu.png" width="270" alt="Windows tray menu with Open TikTok, Settings, Always on top, Hide from taskbar, Check for updates, and Quit"></a>
+    </td>
+  </tr>
+</table>
 
-## Controls
+**Show or hide TikTok from any app.** Go to **Settings → Keyboard and mouse → Show or hide TikTok**, choose a shortcut, and select **Save**. Press it once to hide the window and pause playback, and again to restore the window. This works while the app is running in the tray. Select **Clear** to turn the shortcut off.
 
-| Input | Action |
+| Shortcut | Action |
 | --- | --- |
-| Wheel, Up or Down | Navigate the TikTok feed using its native scrolling and keyboard behaviour |
-| Space | Play or pause the visible video while the site has focus |
-| M | Toggle mute |
-| F / Esc | Enter or leave fullscreen |
-| System tray → Settings or Ctrl+, | Open app settings |
-| System tray → Always on top | Keep the TikTok window above other windows |
-| System tray → Hide from taskbar | Remove the running taskbar button and keep the window open |
-| System tray → Open TikTok / Quit TikTok Desktop | Restore or close the app |
-| Settings → Keyboard and mouse → Show or hide TikTok | Set a global shortcut to hide or restore the window while the app is running |
-| Alt+F4 | Close the window |
+| Mouse wheel, **↑** or **↓** | Move between feed videos |
+| **Space** | Play or pause the current video |
+| **M** | Toggle mute |
+| **F** or **Esc** | Enter or leave fullscreen |
+| **Ctrl + ,** | Open Settings |
+| **Alt + F4** | Close the app |
 
-Space toggles the current video even when the playback bar is hidden. Text fields and keyboard-focused buttons retain their normal Space behavior. The app pauses HTML media while Settings is open. With **Pause when minimised** enabled, it also pauses on Windows minimise and leaves playback paused on restore. **Clear disk cache** preserves cookies and site storage. **Log out locally** clears the app’s TikTok profile after unloading the active site. The hardware acceleration preference applies at the next launch and WebView2 chooses the decoder for each video.
+Playback shortcuts work when the TikTok view has focus and leave text entry and keyboard-focused controls available. Windows media controls can also play or pause the visible video.
 
-## Build from source
+## Make the window fit
 
-Install Node.js 22 or later, Rust stable with its MSVC toolchain, Microsoft C++ Build Tools and a Windows SDK. In Visual Studio Build Tools, include **Desktop development with C++**, the x64 compiler and the ARM64 compiler if building ARM64. Windows 11 normally already has the Evergreen WebView2 Runtime. Run each build in the appropriate Visual Studio Developer PowerShell so the Windows resource compiler and linker are on the path.
+In **Settings → Display**, turn on **Video only** to hide the feed controls and details together. To change individual parts, use **Hide TikTok sidebar**, **Hide reaction buttons**, or the switches for the arrows, video details, and playback bar. Use **Page zoom** to scale TikTok, or **Video sizing** to fit the whole picture or fill the frame. **Reset display** restores the defaults.
 
-```powershell
-npm ci
-rustup target add x86_64-pc-windows-msvc aarch64-pc-windows-msvc
-npm run build
-npm run tauri -- build --target x86_64-pc-windows-msvc --config "$PWD/src-tauri/tauri.local.conf.json"
-npm run tauri -- build --target aarch64-pc-windows-msvc --config "$PWD/src-tauri/tauri.local.conf.json"
-```
+<details>
+<summary>Use a custom app icon</summary>
 
-Build output is under `src-tauri/target/<target>/release/`. The NSIS installer is under `bundle/nsis/` inside that release folder. To run the Rust security test on your native architecture, build the frontend first and run `cargo test --manifest-path src-tauri/Cargo.toml`. To launch a development build with the same bundled-origin restrictions, use `npm run tauri -- dev --no-dev-server`.
+Save a square Windows ICO file as `%LOCALAPPDATA%\com.tiktokdesk.client\app-icon.ico`, then reopen the app. Use a multi-resolution ICO for high-DPI displays. To customise a pinned shortcut, select the same ICO in that shortcut’s Windows properties.
 
-- [Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows)
-- [Tauri Windows installer documentation](https://v2.tauri.app/distribute/windows-installer/)
-- [Microsoft Evergreen WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+</details>
 
-## Updates
+## Sign in and update
 
-The app checks GitHub Releases once per launch and asks before installing a newer version. **Check for updates** is also available from the tray icon. The app verifies the installer's updater signature before running it. Users upgrading from v0.1.0 need to install v0.1.1 manually once.
+- **Sign in.** Use TikTok’s own login menu. If a popup is blocked, select **Use QR code** and scan it with a phone already signed in to your TikTok account. Phone or email sign-in is also available when configured on your account. Google sign-in is unavailable in the embedded browser.
+- **Update.** The app checks GitHub Releases when it opens and asks before installing a newer version. You can also choose **Check for updates** from the tray. If you’re still on v0.1.0, install the current release manually once to add the updater.
 
-## Publishing a release
+In **Settings**, **Pause when minimised** stops playback when you minimise the window. **Clear disk cache** keeps your sign-in, and **Log out locally** clears this app’s TikTok session. Hardware acceleration changes take effect when you reopen the app.
 
-1. Update the version in the Tauri config, Rust package and npm package.
-2. Use the existing updater signing key for both architecture builds. Supply its path with `TAURI_SIGNING_PRIVATE_KEY` and its password with `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the build environment. Store the key and password outside the repository. Installed copies trust the public key in the Tauri config.
-3. Run the two Tauri build commands without the local config overlay. Copy each NSIS installer and its matching `.sig` into one release folder. Name the installers `TikTok-Desktop-<version>-arm64-setup.exe` and `TikTok-Desktop-<version>-x64-setup.exe`, with `.sig` appended to the matching signature files.
-4. Run `node tools/make-update-manifest.mjs <release-folder>`. Attach both installers and the resulting `latest.json` to the same GitHub release tagged `v<version>`. Publish it as the latest release.
+## Build or report a problem
 
-[Tauri updater signing and manifest documentation](https://v2.tauri.app/plugin/updater/)
+- [Build, release, and security documentation](docs/building.md)
+- [Report an issue](https://github.com/JNathan34/tiktok-desktop-windows/issues/new) with your app version, Windows architecture, and steps to reproduce it.
 
-## Site and security boundaries
-
-- The website controls feed availability, account actions, challenges, region restrictions and login methods. External OAuth windows and off-site links are blocked. If a sign-in popup is blocked, select **Use QR code** to open TikTok’s sign-in page inside the app. Scan with a phone already signed in to the TikTok account you want to use. TikTok’s phone or email sign-in is also available for accounts with those methods set up.
-- The layout preserves TikTok’s own player and interaction UI, including the navigation the site chooses to render. The shell follows your theme and sends a colour preference to WebView2. TikTok may apply its own saved theme.
-- The local shell uses an in-private WebView2 profile. TikTok uses the persistent profile, with one WebView2 browser environment shared between the surfaces. The site may request subresources from its media and service hosts. Top-level navigation is limited to known TikTok HTTPS hosts and the neutral blank document used for startup and local sign-out.
-- Only the bundled shell webview receives the declared Tauri command permissions. Each command also checks the caller’s webview label and local origin. WebView2 web messaging is disabled on the remote controller. Website-initiated downloads and requests for browser permissions are denied. Same-site popups with a known URL can open in the existing site surface.
-- Site routes are in `src-tauri/src/site.rs`. Playback shortcuts use standard media elements in `playback.js`. These are the areas to check after a TikTok layout change.
-
-
-
-
-
-
-Windows media controls use the TikTok Desktop playback session. Play and pause apply to the visible TikTok video.
+Built with Tauri 2, Rust, WebView2, and TypeScript. TikTok Desktop is an independent project and is unaffiliated with TikTok.
