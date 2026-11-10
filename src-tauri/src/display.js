@@ -14,14 +14,37 @@
         display: none !important;
       }
 
-      @media (max-width: 620px), (max-height: 500px) {
-        main:has(> [data-e2e="anchoring-player-column"]) {
+      @media (max-width: 620px), (max-height: 680px) {
+        main:has(> :is([data-e2e="anchoring-player-column"], [class*="--DivColumnListContainer"])) {
           min-width: 0 !important;
           flex: 1 1 0% !important;
         }
         [data-e2e="anchoring-player-column"] {
           min-width: 0 !important;
           min-height: 0 !important;
+        }
+        main > [class*="--DivColumnListContainer"] {
+          min-width: 0 !important;
+          width: 100% !important;
+        }
+        main > [class*="--DivColumnListContainer"] :is(
+          [data-e2e="recommend-list-item-container"], [class*="--DivContentFlexLayout"], [data-e2e="feed-video"]
+        ) {
+          box-sizing: border-box !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          max-width: 100% !important;
+          max-height: 100% !important;
+          height: 100% !important;
+        }
+        html[data-ttdesk-video-fit="site"] main > [class*="--DivColumnListContainer"] [data-e2e="feed-video"] .tiktok-web-player video {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          transform: none !important;
+          object-position: center !important;
+          object-fit: contain !important;
         }
       }
 
