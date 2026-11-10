@@ -130,6 +130,7 @@ fn save_settings(
     {
         let mut current = preferences.current.lock().map_err(error)?;
         settings.always_on_top = current.always_on_top;
+        settings.hide_from_taskbar = current.hide_from_taskbar;
         settings.window_shortcut = current.window_shortcut;
         settings::persist(&preferences.file, &settings).map_err(error)?;
         *current = settings;
@@ -229,6 +230,15 @@ fn show_window(window: &Window) {
     }
     let _ = window.unminimize();
     let app = window.app_handle();
+    let hide_from_taskbar = app
+        .state::<Preferences>()
+        .current
+        .lock()
+        .expect("preferences")
+        .hide_from_taskbar;
+    if hide_from_taskbar {
+        let _ = window.set_skip_taskbar(true);
+    }
     app.state::<ViewState>().lock().expect("view state").hidden = false;
     sync_media(app);
     let _ = window.set_focus();
@@ -305,6 +315,7 @@ fn main() {
                 .min_inner_size(280.0, 260.0)
                 .decorations(true)
                 .always_on_top(initial.always_on_top)
+                .skip_taskbar(initial.hide_from_taskbar)
                 .visible(false);
             let size = app_icon::system_size(windows::Win32::UI::WindowsAndMessaging::SM_CXSMICON);
             if let Some(icon) = custom_icon.as_ref().and_then(|icon| app_icon::frame(icon, size)) {
@@ -404,8 +415,11 @@ fn main() {
                     }
                 }
             });
-            tray::install(app, custom_icon.as_ref(), initial.always_on_top)?;
+            tray::install(app, custom_icon.as_ref(), initial)?;
             window.show()?;
+            if initial.hide_from_taskbar {
+                window.set_skip_taskbar(true)?;
+            }
             view.set_focus()?;
             updates::check(app.handle(), false);
             Ok(())

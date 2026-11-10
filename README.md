@@ -26,6 +26,7 @@ The app ships with a round desktop icon. To use your own icon for the window and
 | F / Esc | Enter or leave fullscreen |
 | System tray → Settings or Ctrl+, | Open app settings |
 | System tray → Always on top | Keep the TikTok window above other windows |
+| System tray → Hide from taskbar | Remove the running taskbar button and keep the window open |
 | System tray → Open TikTok / Quit TikTok Desktop | Restore or close the app |
 | Settings → Keyboard and mouse → Show or hide TikTok | Set a global shortcut to hide or restore the window while the app is running |
 | Alt+F4 | Close the window |
