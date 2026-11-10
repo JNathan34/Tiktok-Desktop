@@ -4,6 +4,7 @@ mod app_icon;
 mod media_controls;
 mod settings;
 mod site;
+mod tray;
 mod updates;
 mod windows_host;
 
@@ -12,8 +13,6 @@ use settings::{Preferences, Settings};
 use site::{CONTENT, SHELL};
 use std::sync::Mutex;
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuItem},
-    tray::TrayIconBuilder,
     webview::{NewWindowResponse, PageLoadEvent, WebviewBuilder},
     window::WindowBuilder,
     AppHandle, LogicalPosition, LogicalSize, Manager, Rect, State, Webview, WebviewUrl, Window,
@@ -225,79 +224,6 @@ fn on_fullscreen(window: &Window, fullscreen: bool) {
     }
 }
 
-fn toggle_always_on_top(app: &AppHandle, item: &CheckMenuItem<tauri::Wry>) -> Result<(), String> {
-    let window = app
-        .get_window("desktop")
-        .ok_or("TikTok window is unavailable.")?;
-    let preferences = app.state::<Preferences>();
-    let mut current = preferences.current.lock().map_err(error)?;
-    let next = Settings {
-        always_on_top: !current.always_on_top,
-        ..*current
-    };
-    window
-        .set_always_on_top(next.always_on_top)
-        .map_err(error)?;
-    if let Err(err) = settings::persist(&preferences.file, &next) {
-        let _ = window.set_always_on_top(current.always_on_top);
-        return Err(error(err));
-    }
-    *current = next;
-    item.set_checked(next.always_on_top).map_err(error)
-}
-
-fn install_tray(
-    app: &tauri::App,
-    custom_icon: Option<&ico::IconDir>,
-    topmost: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let settings = MenuItem::with_id(app, "tray-settings", "Settings", true, None::<&str>)?;
-    let check_updates =
-        MenuItem::with_id(app, "tray-updates", "Check for updates", true, None::<&str>)?;
-    let always_on_top = CheckMenuItem::with_id(
-        app,
-        "tray-topmost",
-        "Always on top",
-        true,
-        topmost,
-        None::<&str>,
-    )?;
-    let menu = Menu::with_items(app, &[&settings, &check_updates, &always_on_top])?;
-    let size = app_icon::system_size(windows::Win32::UI::WindowsAndMessaging::SM_CXSMICON);
-    let icon = match custom_icon.and_then(|icon| app_icon::frame(icon, size)) {
-        Some(icon) => icon,
-        None => tauri::image::Image::from_app_icon_resource(size)?,
-    };
-    TrayIconBuilder::with_id("tiktok-desktop")
-        .icon(icon)
-        .tooltip("TikTok Desktop")
-        .menu(&menu)
-        .on_menu_event(move |app, event| {
-            if event.id().as_ref() == "tray-updates" {
-                if let Some(window) = app.get_window("desktop") {
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
-                }
-                updates::check(app, true);
-            } else if event.id().as_ref() == "tray-topmost" {
-                if let Err(err) = toggle_always_on_top(app, &always_on_top) {
-                    eprintln!("Could not change Always on top: {err}");
-                }
-            } else if event.id().as_ref() == "tray-settings" {
-                if let Some(shell) = app.get_webview(SHELL) {
-                    let window = shell.window();
-                    if window.is_minimized().unwrap_or(false) {
-                        let _ = window.unminimize();
-                    }
-                    let _ = window.set_focus();
-                    let _ = shell.eval("window.dispatchEvent(new Event('desktop-settings'))");
-                }
-            }
-        })
-        .build(app)?;
-    Ok(())
-}
-
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -421,7 +347,7 @@ fn main() {
                     }
                 }
             });
-            install_tray(app, custom_icon.as_ref(), initial.always_on_top)?;
+            tray::install(app, custom_icon.as_ref(), initial.always_on_top)?;
             window.show()?;
             view.set_focus()?;
             updates::check(app.handle(), false);
