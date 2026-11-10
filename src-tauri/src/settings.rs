@@ -64,6 +64,7 @@ impl DisplaySettings {
 pub struct Settings {
     pub theme: Theme,
     pub pause_minimized: bool,
+    pub always_on_top: bool,
     pub hardware_acceleration: bool,
     pub launch_feed: Feed,
     pub display: DisplaySettings,
@@ -74,6 +75,7 @@ impl Default for Settings {
         Self {
             theme: Theme::Dark,
             pause_minimized: true,
+            always_on_top: false,
             hardware_acceleration: true,
             launch_feed: Feed::Home,
             display: DisplaySettings::default(),

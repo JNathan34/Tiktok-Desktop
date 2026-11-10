@@ -10,7 +10,11 @@ Choose the **ARM64** installer for Snapdragon Windows devices or the **x64** ins
 
 Use TikTok’s own **Log in** control to sign in. The app keeps the site’s browser session in its own profile. Use TikTok’s embedded controls for playback, likes, comments, sharing and creator profiles. TikTok fills the area below the standard Windows title bar. Use TikTok’s own navigation.
 
-In **Settings → Display**, **Video only** hides the feed controls and details together. The individual switches hide the sidebar, reactions, arrows, video details or playback bar. **Page zoom** changes the TikTok web view, and **Video sizing** can fit the whole video or fill the frame by cropping. **Reset display** restores TikTok's default layout.
+In **Settings → Display**, **Hide TikTok sidebar** removes the navigation rail and gives its space to the player. **Video only** hides the feed controls and details together. The individual switches hide the sidebar, reactions, arrows, video details or playback bar. **Page zoom** changes the TikTok web view, and **Video sizing** can fit the whole video or fill the frame by cropping. The feed adjusts to narrow windows at the selected page zoom. **Reset display** restores the display defaults.
+
+## App icon
+
+The app ships with a round desktop icon. To use your own icon for the window and tray, save a square Windows ICO file as `%LOCALAPPDATA%\com.tiktokdesk.client\app-icon.ico` and reopen the app. Use a multi-resolution ICO for high-DPI displays. You can also set the same file in the Windows shortcut properties for a pinned taskbar icon.
 
 ## Controls
 
@@ -21,6 +25,7 @@ In **Settings → Display**, **Video only** hides the feed controls and details 
 | M | Toggle mute |
 | F / Esc | Enter or leave fullscreen |
 | System tray → Settings or Ctrl+, | Open app settings |
+| System tray → Always on top | Keep the TikTok window above other windows |
 | Alt+F4 | Close the window |
 
 Space toggles the current video even when the playback bar is hidden. Text fields and keyboard-focused buttons retain their normal Space behavior. The app pauses HTML media while Settings is open. With **Pause when minimised** enabled, it also pauses on Windows minimise and leaves playback paused on restore. **Clear disk cache** preserves cookies and site storage. **Log out locally** clears the app’s TikTok profile after unloading the active site. The hardware acceleration preference applies at the next launch and WebView2 chooses the decoder for each video.

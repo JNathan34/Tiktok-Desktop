@@ -14,6 +14,17 @@
         display: none !important;
       }
 
+      @media (max-width: 620px), (max-height: 500px) {
+        main:has(> [data-e2e="anchoring-player-column"]) {
+          min-width: 0 !important;
+          flex: 1 1 0% !important;
+        }
+        [data-e2e="anchoring-player-column"] {
+          min-width: 0 !important;
+          min-height: 0 !important;
+        }
+      }
+
       html[data-ttdesk-video-only] :is([data-e2e="anchoring-player-column"], [data-e2e="feed-video"]) {
         border-radius: 0 !important;
         background-color: black !important;
