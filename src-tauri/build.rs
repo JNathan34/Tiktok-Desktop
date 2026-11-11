@@ -6,6 +6,8 @@ fn main() {
             "save_settings",
             "layout",
             "open_qr_sign_in",
+            "tiktok_has_content",
+            "reload_tiktok",
             "clear_tiktok_data",
             "close_settings",
             "tray_state",

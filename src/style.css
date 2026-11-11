@@ -60,7 +60,7 @@ h2 { font-size: 13px; font-weight: 650; color: var(--muted); margin: 24px 0 8px 
 .row + .row { border-top: 1px solid var(--line); }
 strong { font-weight: 650; }
 small { display: block; color: var(--muted); margin-top: 3px; font-size: 12px; }
-select, .row button, #dismiss-notice { flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+select, .row button, .notice-actions button { flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
 .row button:hover { background: var(--hover); }
 .danger { color: var(--accent); }
 .confirm { background: var(--selection); flex-wrap: wrap; }

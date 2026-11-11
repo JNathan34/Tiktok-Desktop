@@ -37,6 +37,7 @@ struct PaneState {
     hidden: bool,
     fullscreen: bool,
     maintenance: bool,
+    site_secured: bool,
 }
 
 type ViewState = Mutex<PaneState>;
@@ -221,6 +222,31 @@ fn open_qr_sign_in(webview: Webview) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn tiktok_has_content(webview: Webview) -> Result<bool, String> {
+    check_shell(&webview)?;
+    let view = site::content(webview.app_handle())?;
+    if !view.url().is_ok_and(|url| site::is_tiktok(&url)) {
+        return Ok(false);
+    }
+    windows_host::has_visible_content(&view).await
+}
+
+#[tauri::command]
+fn reload_tiktok(webview: Webview, preferences: State<Preferences>) -> Result<(), String> {
+    check_shell(&webview)?;
+    let app = webview.app_handle();
+    {
+        let state = app.state::<ViewState>();
+        let state = state.lock().map_err(error)?;
+        if !state.site_secured || state.maintenance {
+            return Err("TikTok cannot reload yet. Reopen TikTok Desktop if this persists.".into());
+        }
+    }
+    let feed = preferences.current.lock().map_err(error)?.launch_feed;
+    site::content(app)?.navigate(site::feed_url(feed)).map_err(error)
+}
+
+#[tauri::command]
 async fn clear_tiktok_data(webview: Webview, sign_out: bool) -> Result<(), String> {
     settings_window::check(&webview)?;
     let app = webview.app_handle();
@@ -331,6 +357,8 @@ fn main() {
             save_settings,
             layout,
             open_qr_sign_in,
+            tiktok_has_content,
+            reload_tiktok,
             clear_tiktok_data,
             settings_window::close_settings,
             tray::tray_state,

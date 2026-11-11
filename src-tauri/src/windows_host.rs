@@ -8,7 +8,7 @@ use tauri::{Manager, Webview, Window};
 use webview2_com::{
     AcceleratorKeyPressedEventHandler, ClearBrowsingDataCompletedHandler, CoTaskMemPWSTR,
     ContainsFullScreenElementChangedEventHandler, Microsoft::Web::WebView2::Win32::*,
-    NavigationCompletedEventHandler,
+    ExecuteScriptCompletedHandler, NavigationCompletedEventHandler,
 };
 use windows::{
     core::{Interface, HSTRING},
@@ -127,6 +127,8 @@ pub fn configure(
             unsafe {
                 controller.add_AcceleratorKeyPressed(&preferences, &mut 0)?;
                 core.add_ContainsFullScreenElementChanged(&fullscreen, &mut 0)?;
+                view_handle.app_handle().state::<crate::ViewState>()
+                    .lock().expect("view state").site_secured = true;
                 core.Navigate(&HSTRING::from(site::feed_url(initial.launch_feed).as_str()))?;
             }
             Ok(())
@@ -142,6 +144,33 @@ pub fn configure(
         }
     })?;
     Ok(())
+}
+
+pub async fn has_visible_content(view: &Webview) -> Result<bool, String> {
+    let (done, result) = mpsc::channel();
+    view.with_webview(move |platform| {
+        let complete = ExecuteScriptCompletedHandler::create(Box::new({
+            let done = done.clone();
+            move |status, json| {
+                let _ = done.send(status.map(|()| json == "true").map_err(crate::error));
+                Ok(())
+            }
+        }));
+        let script = HSTRING::from(include_str!("site_ready.js"));
+        let query = unsafe {
+            platform.controller().CoreWebView2()
+                .and_then(|core| core.ExecuteScript(&script, &complete))
+        };
+        if let Err(error) = query {
+            let _ = done.send(Err(error.to_string()));
+        }
+    })
+    .map_err(crate::error)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        result.recv_timeout(Duration::from_secs(3)).map_err(crate::error)?
+    })
+    .await
+    .map_err(crate::error)?
 }
 
 fn set_theme(core: &ICoreWebView2, theme: Theme) -> windows::core::Result<()> {
