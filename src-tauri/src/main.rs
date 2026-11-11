@@ -435,11 +435,17 @@ fn main() {
             }
 
             let profile = data.join("TikTokProfile");
-            let args = if initial.hardware_acceleration {
-                "--disable-features=msWebOOUI,msPdfOOUI,HardwareMediaKeyHandling --autoplay-policy=no-user-gesture-required"
-            } else {
-                "--disable-features=msWebOOUI,msPdfOOUI,HardwareMediaKeyHandling --autoplay-policy=no-user-gesture-required --disable-gpu"
-            };
+            let mut args = String::from(
+                "--disable-features=msWebOOUI,msPdfOOUI,HardwareMediaKeyHandling --autoplay-policy=no-user-gesture-required",
+            );
+            if !initial.hardware_acceleration {
+                args.push_str(" --disable-gpu");
+            }
+            if cfg!(target_arch = "aarch64") {
+                // The Windows on Arm hardware decoder can disconnect during TikTok playback.
+                args.push_str(" --disable-accelerated-video-decode");
+            }
+            let args = args.as_str();
             window.add_child(
                 WebviewBuilder::new(SHELL, WebviewUrl::App("index.html".into()))
                     .on_navigation(is_shell_url)
