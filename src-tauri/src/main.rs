@@ -245,19 +245,21 @@ async fn clear_tiktok_data(webview: Webview, sign_out: bool) -> Result<(), Strin
     result
 }
 
+fn hide_from_taskbar(app: &AppHandle) -> bool {
+    app.state::<Preferences>()
+        .current
+        .lock()
+        .expect("preferences")
+        .hide_from_taskbar
+}
+
 fn show_window(window: &Window) {
     if window.show().is_err() {
         return;
     }
     let _ = window.unminimize();
     let app = window.app_handle();
-    let hide_from_taskbar = app
-        .state::<Preferences>()
-        .current
-        .lock()
-        .expect("preferences")
-        .hide_from_taskbar;
-    if hide_from_taskbar {
+    if hide_from_taskbar(app) {
         let _ = window.set_skip_taskbar(true);
     }
     app.state::<ViewState>().lock().expect("view state").hidden = false;
@@ -266,10 +268,12 @@ fn show_window(window: &Window) {
 }
 
 fn toggle_window(window: &Window) {
+    let app = window.app_handle();
     if !window.is_visible().unwrap_or(false) || window.is_minimized().unwrap_or(false) {
         show_window(window);
+    } else if !hide_from_taskbar(app) {
+        let _ = window.minimize();
     } else if window.hide().is_ok() {
-        let app = window.app_handle();
         app.state::<ViewState>().lock().expect("view state").hidden = true;
         sync_media(app);
     }

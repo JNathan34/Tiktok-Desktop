@@ -37,7 +37,7 @@
 | **Ctrl + Shift + ↑ / ↓** | Previous or next TikTok |
 | **Ctrl + Shift + ← / →** | Seek backward or forward five seconds |
 
-To set a shortcut for showing or hiding the window, open **Settings → Keyboard and mouse → Show or hide TikTok**, choose a key, and select **Save**. Windows may reserve some combinations. Settings shows which shortcuts the app could register.
+To set a shortcut for showing or hiding the window, open **Settings → Keyboard and mouse → Show or hide TikTok**, choose a key, and select **Save**. The shortcut minimises TikTok when its taskbar button is enabled. Press it again to restore the window. Settings shows which shortcuts Windows could register.
 
 ## Install and update
 
