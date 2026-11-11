@@ -2,6 +2,7 @@ export {};
 
 interface TrayState {
   theme: "dark" | "light" | "system";
+  videoOnly: boolean;
   alwaysOnTop: boolean;
   hideFromTaskbar: boolean;
 }
@@ -34,7 +35,7 @@ document.querySelector("#version")!.textContent = "v" + trayBrand.version;
 function render(state: TrayState) {
   document.documentElement.dataset.theme = state.theme;
   for (const button of toggles) {
-    const key = button.dataset.action as "alwaysOnTop" | "hideFromTaskbar";
+    const key = button.dataset.action as "videoOnly" | "alwaysOnTop" | "hideFromTaskbar";
     button.setAttribute("aria-checked", String(state[key]));
     button.querySelector(".toggle span")!.textContent = state[key] ? "On" : "Off";
   }

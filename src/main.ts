@@ -191,7 +191,9 @@ function update(patch: Partial<Settings>, display?: Partial<DisplaySettings>) {
     if (!settings) return;
     const next = { ...settings, ...patch, display: { ...settings.display, ...display } };
     try {
-      const restart = await tauri.invoke<boolean>("save_settings", { settings: next });
+      const restart = await tauri.invoke<boolean>("save_settings", {
+        settings: next, videoOnlyChanged: display?.videoOnly !== undefined,
+      });
       settings = { ...next, windowShortcut: settings.windowShortcut, shortcutActive: settings.shortcutActive };
       element("gpu-note").textContent = restart
         ? "Restart TikTok Desktop to apply this change."
@@ -258,6 +260,17 @@ element("cancel-logout").addEventListener("click", () => { confirmLogout.hidden 
 element("confirm-logout-button").addEventListener("click", () => void clearData(true));
 
 window.addEventListener("desktop-settings", () => void showSettings(true));
+window.addEventListener("desktop-video-only-changed", () => {
+  saveQueue = saveQueue.then(async () => {
+    try {
+      const current = await tauri.invoke<Settings>("get_settings");
+      if (settings) settings.display.videoOnly = current.display.videoOnly;
+      renderSettings();
+    } catch (error) {
+      report(error);
+    }
+  });
+});
 window.addEventListener("desktop-popup-blocked", () => {
   showNotice("This popup could not open. For TikTok sign-in, use a QR code.", true);
 });

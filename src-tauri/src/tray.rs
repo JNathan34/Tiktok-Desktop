@@ -24,12 +24,12 @@ use windows::Win32::{
 
 const LABEL: &str = "tray-popup";
 const WIDTH: u32 = 312;
-const HEIGHT: u32 = 344;
+const HEIGHT: u32 = 336;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
-    Open,
+    VideoOnly,
     Settings,
     AlwaysOnTop,
     HideFromTaskbar,
@@ -42,6 +42,7 @@ pub enum Action {
 #[serde(rename_all = "camelCase")]
 pub struct MenuState {
     theme: Theme,
+    video_only: bool,
     always_on_top: bool,
     hide_from_taskbar: bool,
 }
@@ -63,6 +64,7 @@ fn menu_state(app: &AppHandle) -> Result<MenuState, String> {
     let current = preferences.current.lock().map_err(error)?;
     Ok(MenuState {
         theme: current.theme,
+        video_only: current.display.video_only,
         always_on_top: current.always_on_top,
         hide_from_taskbar: current.hide_from_taskbar,
     })
@@ -100,6 +102,20 @@ pub fn tray_action(webview: Webview, action: Action) -> Result<MenuState, String
     match action {
         Action::Dismiss => popup.hide().map_err(error)?,
         Action::Quit => app.exit(0),
+        Action::VideoOnly => {
+            let preferences = app.state::<Preferences>();
+            let mut current = preferences.current.lock().map_err(error)?;
+            let mut next = *current;
+            next.display.video_only = !next.display.video_only;
+            settings::persist(&preferences.file, &next).map_err(error)?;
+            *current = next;
+            if let Some(shell) = app.get_webview(site::SHELL) {
+                let _ = shell.eval("window.dispatchEvent(new Event('desktop-video-only-changed'))");
+            }
+            if let Ok(view) = site::content(app) {
+                view.eval(site::display_script(next.display)).map_err(error)?;
+            }
+        }
         _ => {
             let window = app
                 .get_window("desktop")
@@ -108,7 +124,7 @@ pub fn tray_action(webview: Webview, action: Action) -> Result<MenuState, String
                 Action::AlwaysOnTop | Action::HideFromTaskbar => {
                     toggle_window_option(&window, action)?
                 }
-                Action::Open | Action::Settings | Action::Updates => {
+                Action::Settings | Action::Updates => {
                     popup.hide().map_err(error)?;
                     crate::show_window(&window);
                     if matches!(action, Action::Settings) {
@@ -233,17 +249,31 @@ pub fn install(
 
     TrayIconBuilder::with_id("tiktok-desktop")
         .icon(icon(app_icon::system_size(SM_CXSMICON))?)
-        .tooltip("TikTok Desktop")
+        .tooltip("TikTok Desktop · Left-click to open · Right-click for controls")
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
-                button: MouseButton::Left | MouseButton::Right,
+                button,
                 button_state: MouseButtonState::Up,
                 rect,
                 ..
             } = event
             {
-                if let Err(err) = show_popup(tray.app_handle(), rect) {
-                    eprintln!("Could not open tray menu: {err}");
+                let app = tray.app_handle();
+                match button {
+                    MouseButton::Left => {
+                        if let Some(popup) = app.get_webview_window(LABEL) {
+                            let _ = popup.hide();
+                        }
+                        if let Some(window) = app.get_window("desktop") {
+                            crate::show_window(&window);
+                        }
+                    }
+                    MouseButton::Right => {
+                        if let Err(err) = show_popup(app, rect) {
+                            eprintln!("Could not open tray menu: {err}");
+                        }
+                    }
+                    _ => {}
                 }
             }
         })

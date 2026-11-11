@@ -6,8 +6,6 @@
   --ink: #f6f7fa;
   --muted: #adb0bb;
   --accent: #73e9df;
-  --primary: #203637;
-  --primary-hover: #284648;
   --on-ink: #0f2425;
   --danger: #ffa3b6;
   font: 14px "Segoe UI Variable", "Segoe UI", sans-serif;
@@ -21,8 +19,6 @@
   --ink: #1d2026;
   --muted: #535967;
   --accent: #076b64;
-  --primary: #ddf5f0;
-  --primary-hover: #c8eee7;
   --on-ink: #fff;
   --danger: #9f2447;
 }
@@ -36,8 +32,6 @@
     --ink: #1d2026;
     --muted: #535967;
     --accent: #076b64;
-    --primary: #ddf5f0;
-    --primary-hover: #c8eee7;
     --on-ink: #fff;
     --danger: #9f2447;
   }
@@ -75,11 +69,6 @@ h1 { margin: 0; font-size: 16px; font-weight: 680; letter-spacing: -.018em; }
 .item .chevron { margin-inline-start: auto; width: 15px; }
 .item small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 400; }
 
-.primary { min-height: 51px; border-color: var(--line); border-radius: 10px; background: var(--primary); font-weight: 650; }
-.primary:hover { background: var(--primary-hover); }
-.primary .chevron { color: var(--accent); }
-.play { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--on-ink); }
-.play svg { fill: currentColor; stroke-width: 1; }
 .settings { margin-top: 3px; min-height: 38px; }
 
 .window-options { margin-top: 5px; padding-top: 8px; border-top: 1px solid var(--line); }

@@ -131,6 +131,7 @@ fn save_settings(
     webview: Webview,
     preferences: State<Preferences>,
     mut settings: Settings,
+    video_only_changed: Option<bool>,
 ) -> Result<bool, String> {
     check_shell(&webview)?;
     if !(50..=175).contains(&settings.display.zoom_percent) {
@@ -141,6 +142,9 @@ fn save_settings(
         settings.always_on_top = current.always_on_top;
         settings.hide_from_taskbar = current.hide_from_taskbar;
         settings.window_shortcut = current.window_shortcut;
+        if video_only_changed == Some(false) {
+            settings.display.video_only = current.display.video_only;
+        }
         settings::persist(&preferences.file, &settings).map_err(error)?;
         *current = settings;
     }

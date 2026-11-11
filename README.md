@@ -29,7 +29,7 @@
 
 - **Keep TikTok in a compact window.** Turn on **Video only** to hide the feed controls and details, or adjust them individually. The app remembers your window size and position.
 - **Control playback from another app.** Use the global shortcuts below while TikTok Desktop is running.
-- **Manage the window from the tray.** Right-click the TikTok icon to open Settings, keep the window on top, hide its taskbar button, or check for updates.
+- **Use the system tray.** Left-click the TikTok icon to open the app. Right-click for **Video only**, Settings, window controls, and updates.
 
 | Global shortcut | Action |
 | --- | --- |
