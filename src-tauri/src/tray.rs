@@ -1,7 +1,7 @@
 use crate::{
     app_icon, error, is_shell_url,
     settings::{self, Preferences, Theme},
-    site, updates,
+    settings_window, site, updates,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -109,8 +109,8 @@ pub fn tray_action(webview: Webview, action: Action) -> Result<MenuState, String
             next.display.video_only = !next.display.video_only;
             settings::persist(&preferences.file, &next).map_err(error)?;
             *current = next;
-            if let Some(shell) = app.get_webview(site::SHELL) {
-                let _ = shell.eval("window.dispatchEvent(new Event('desktop-video-only-changed'))");
+            if let Some(settings) = app.get_webview(settings_window::LABEL) {
+                let _ = settings.eval("window.dispatchEvent(new Event('desktop-video-only-changed'))");
             }
             if let Ok(view) = site::content(app) {
                 view.eval(site::display_script(next.display)).map_err(error)?;
@@ -124,17 +124,14 @@ pub fn tray_action(webview: Webview, action: Action) -> Result<MenuState, String
                 Action::AlwaysOnTop | Action::HideFromTaskbar => {
                     toggle_window_option(&window, action)?
                 }
-                Action::Settings | Action::Updates => {
+                Action::Settings => {
+                    popup.hide().map_err(error)?;
+                    settings_window::show(app)?;
+                }
+                Action::Updates => {
                     popup.hide().map_err(error)?;
                     crate::show_window(&window);
-                    if matches!(action, Action::Settings) {
-                        if let Some(shell) = app.get_webview(site::SHELL) {
-                            let _ =
-                                shell.eval("window.dispatchEvent(new Event('desktop-settings'))");
-                        }
-                    } else if matches!(action, Action::Updates) {
-                        updates::check(app, true);
-                    }
+                    updates::check(app, true);
                 }
                 _ => unreachable!(),
             }

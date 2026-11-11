@@ -4,6 +4,7 @@ mod app_icon;
 mod hotkey;
 mod media_controls;
 mod settings;
+mod settings_window;
 mod site;
 mod tray;
 mod updates;
@@ -104,7 +105,11 @@ fn get_settings(
     webview: Webview,
     preferences: State<Preferences>,
 ) -> Result<SettingsSnapshot, String> {
-    check_shell(&webview)?;
+    if webview.label() == SHELL {
+        check_shell(&webview)?;
+    } else {
+        settings_window::check(&webview)?;
+    }
     let hotkeys = webview.app_handle().state::<hotkey::Hotkey>();
     Ok(SettingsSnapshot {
         settings: *preferences.current.lock().map_err(error)?,
@@ -118,11 +123,10 @@ fn set_window_shortcut(
     webview: Webview,
     shortcut: Option<hotkey::Shortcut>,
 ) -> Result<Option<hotkey::Shortcut>, String> {
-    check_shell(&webview)?;
-    webview
-        .app_handle()
-        .state::<hotkey::Hotkey>()
-        .change(&webview.window(), shortcut)?;
+    settings_window::check(&webview)?;
+    let app = webview.app_handle();
+    let desktop = app.get_window("desktop").ok_or("TikTok window is unavailable.")?;
+    app.state::<hotkey::Hotkey>().change(&desktop, shortcut)?;
     Ok(shortcut)
 }
 
@@ -133,7 +137,7 @@ fn save_settings(
     mut settings: Settings,
     video_only_changed: Option<bool>,
 ) -> Result<bool, String> {
-    check_shell(&webview)?;
+    settings_window::check(&webview)?;
     if !(50..=175).contains(&settings.display.zoom_percent) {
         return Err("Page zoom must be between 50% and 175%.".into());
     }
@@ -149,6 +153,10 @@ fn save_settings(
         *current = settings;
     }
     let app = webview.app_handle();
+    if let Some(shell) = app.get_webview(SHELL) {
+        let theme = serde_json::to_string(&settings.theme).map_err(error)?;
+        let _ = shell.eval(format!("window.dispatchEvent(new CustomEvent('desktop-theme-changed', {{ detail: {theme} }}))"));
+    }
     if let Ok(view) = site::content(app) {
         windows_host::apply_theme(&view, settings.theme);
         view.set_zoom(settings.display.zoom_factor())
@@ -214,7 +222,7 @@ fn open_qr_sign_in(webview: Webview) -> Result<(), String> {
 
 #[tauri::command]
 async fn clear_tiktok_data(webview: Webview, sign_out: bool) -> Result<(), String> {
-    check_shell(&webview)?;
+    settings_window::check(&webview)?;
     let app = webview.app_handle();
     let view = site::content(app)?;
     let state = app.state::<ViewState>();
@@ -320,6 +328,7 @@ fn main() {
             layout,
             open_qr_sign_in,
             clear_tiktok_data,
+            settings_window::close_settings,
             tray::tray_state,
             tray::tray_action
         ])
@@ -451,6 +460,7 @@ fn main() {
                     }
                 }
             });
+            settings_window::install(app, &window, profile.clone(), args)?;
             tray::install(app, custom_icon.as_ref(), profile, args)?;
             window.show()?;
             if maximize {

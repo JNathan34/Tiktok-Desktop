@@ -1,0 +1,9 @@
+{
+  "identifier": "settings-only",
+  "description": "Only the bundled Settings window can change preferences or clear TikTok data.",
+  "local": true,
+  "webviews": ["settings"],
+  "permissions": [
+    "allow-get-settings", "allow-set-window-shortcut", "allow-save-settings", "allow-clear-tiktok-data", "allow-close-settings"
+  ]
+}

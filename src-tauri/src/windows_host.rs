@@ -108,9 +108,8 @@ pub fn configure(
                             && GetKeyState(i32::from(VK_SHIFT.0)) >= 0
                         {
                             args.SetHandled(true)?;
-                            if let Some(shell) = app.get_webview(site::SHELL) {
-                                let _ = shell
-                                    .eval("window.dispatchEvent(new Event('desktop-settings'))");
+                            if let Err(err) = crate::settings_window::show(&app) {
+                                eprintln!("Could not open Settings: {err}");
                             }
                         }
                     }

@@ -7,6 +7,7 @@ fn main() {
             "layout",
             "open_qr_sign_in",
             "clear_tiktok_data",
+            "close_settings",
             "tray_state",
             "tray_action",
         ]),
