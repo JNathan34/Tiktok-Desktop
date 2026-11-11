@@ -19,7 +19,7 @@
       <br><strong>Display settings</strong>
     </td>
     <td align="center" valign="top" width="33%">
-      <img src="docs/images/tray-menu.png" width="235" alt="System tray menu with window toggles in TikTok Desktop v0.1.9">
+      <img src="docs/images/tray-menu.png" width="235" alt="System tray menu with Video only, Always on top, and Hide from taskbar toggles">
       <br><strong>System tray</strong>
     </td>
   </tr>
