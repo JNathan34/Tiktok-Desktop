@@ -4,6 +4,6 @@
   "local": true,
   "webviews": ["shell"],
   "permissions": [
-    "allow-get-settings", "allow-layout", "allow-open-qr-sign-in", "allow-tiktok-has-content", "allow-reload-tiktok"
+    "allow-get-settings", "allow-layout", "allow-open-qr-sign-in", "allow-tiktok-health", "allow-reload-tiktok", "allow-next-tiktok"
   ]
 }

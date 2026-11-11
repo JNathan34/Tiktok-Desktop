@@ -1,6 +1,6 @@
 [package]
 name = "tiktok-desktop"
-version = "0.1.13"
+version = "0.1.14"
 edition = "2021"
 description = "Unofficial TikTok desktop client for Windows"
 

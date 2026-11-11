@@ -24,7 +24,7 @@ use windows::Win32::{
 
 const LABEL: &str = "tray-popup";
 const WIDTH: u32 = 312;
-const HEIGHT: u32 = 336;
+const HEIGHT: u32 = 376;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +33,7 @@ pub enum Action {
     Settings,
     AlwaysOnTop,
     HideFromTaskbar,
+    Reload,
     Updates,
     Quit,
     Dismiss,
@@ -132,6 +133,14 @@ pub fn tray_action(webview: Webview, action: Action) -> Result<MenuState, String
                     popup.hide().map_err(error)?;
                     crate::show_window(&window);
                     updates::check(app, true);
+                }
+                Action::Reload => {
+                    crate::reload_feed(app)?;
+                    popup.hide().map_err(error)?;
+                    crate::show_window(&window);
+                    if let Some(shell) = app.get_webview(site::SHELL) {
+                        let _ = shell.eval("window.dispatchEvent(new Event('desktop-feed-reloaded'))");
+                    }
                 }
                 _ => unreachable!(),
             }

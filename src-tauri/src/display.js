@@ -10,7 +10,14 @@
       html[data-ttdesk-arrows] :is([data-e2e="anchoring-scroll-controls"], [data-e2e="feed-navigation-next"], [data-e2e="feed-navigation-prev"], [data-e2e="feed-navigation-previous"]),
       html[data-ttdesk-details] [data-e2e="anchoring-description-layer"],
       html[data-ttdesk-controls] [data-e2e="anchoring-playback-chrome"],
-      html[data-ttdesk-video-only] [data-e2e="anchoring-ambient"] {
+      html[data-ttdesk-video-only] :is(
+        [data-e2e="anchoring-ambient"], [data-e2e="cinema-creator-identity"],
+        [data-e2e="cinema-creator-avatar"], [data-e2e="video-author-avatar"],
+        [data-e2e="cinema-video-info-follow"]
+      ),
+      html[data-ttdesk-video-only] :is(
+        [data-e2e="feed-video"], [data-e2e="recommend-list-item-container"], [data-e2e="anchoring-chrome-host"]
+      ) :is([data-e2e="follow-button"], button[aria-label="Follow" i], button[aria-label^="Follow " i]) {
         display: none !important;
       }
 

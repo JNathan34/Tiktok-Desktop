@@ -222,19 +222,24 @@ fn open_qr_sign_in(webview: Webview) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn tiktok_has_content(webview: Webview) -> Result<bool, String> {
-    check_shell(&webview)?;
-    let view = site::content(webview.app_handle())?;
-    if !view.url().is_ok_and(|url| site::is_tiktok(&url)) {
-        return Ok(false);
-    }
-    windows_host::has_visible_content(&view).await
-}
-
-#[tauri::command]
-fn reload_tiktok(webview: Webview, preferences: State<Preferences>) -> Result<(), String> {
+async fn tiktok_health(webview: Webview) -> Result<windows_host::PlaybackHealth, String> {
     check_shell(&webview)?;
     let app = webview.app_handle();
+    {
+        let state = app.state::<ViewState>();
+        let state = state.lock().map_err(error)?;
+        if state.minimized || state.hidden || state.maintenance || state.fullscreen {
+            return Ok(windows_host::PlaybackHealth::Inactive);
+        }
+    }
+    let view = site::content(app)?;
+    if !view.url().is_ok_and(|url| site::is_tiktok(&url)) {
+        return Ok(windows_host::PlaybackHealth::Blank);
+    }
+    windows_host::playback_health(&view).await
+}
+
+fn available_site(app: &AppHandle) -> Result<Webview, String> {
     {
         let state = app.state::<ViewState>();
         let state = state.lock().map_err(error)?;
@@ -242,8 +247,32 @@ fn reload_tiktok(webview: Webview, preferences: State<Preferences>) -> Result<()
             return Err("TikTok cannot reload yet. Reopen TikTok Desktop if this persists.".into());
         }
     }
-    let feed = preferences.current.lock().map_err(error)?.launch_feed;
-    site::content(app)?.navigate(site::feed_url(feed)).map_err(error)
+    site::content(app)
+}
+
+fn reload_feed(app: &AppHandle) -> Result<(), String> {
+    let view = available_site(app)?;
+    if view.url().is_ok_and(|url| site::is_tiktok(&url)) {
+        view.reload().map_err(error)
+    } else {
+        let preferences = app.state::<Preferences>();
+        let feed = preferences.current.lock().map_err(error)?.launch_feed;
+        view.navigate(site::feed_url(feed)).map_err(error)
+    }
+}
+
+#[tauri::command]
+fn reload_tiktok(webview: Webview) -> Result<(), String> {
+    check_shell(&webview)?;
+    reload_feed(webview.app_handle())
+}
+
+#[tauri::command]
+fn next_tiktok(webview: Webview) -> Result<(), String> {
+    check_shell(&webview)?;
+    available_site(webview.app_handle())?
+        .eval("window.dispatchEvent(new Event('desktop-media-next'))")
+        .map_err(error)
 }
 
 #[tauri::command]
@@ -357,8 +386,9 @@ fn main() {
             save_settings,
             layout,
             open_qr_sign_in,
-            tiktok_has_content,
+            tiktok_health,
             reload_tiktok,
+            next_tiktok,
             clear_tiktok_data,
             settings_window::close_settings,
             tray::tray_state,

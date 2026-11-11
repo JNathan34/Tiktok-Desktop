@@ -146,13 +146,25 @@ pub fn configure(
     Ok(())
 }
 
-pub async fn has_visible_content(view: &Webview) -> Result<bool, String> {
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PlaybackHealth {
+    Blank,
+    Buffering,
+    Inactive,
+    Ready,
+    VideoError,
+}
+
+pub async fn playback_health(view: &Webview) -> Result<PlaybackHealth, String> {
     let (done, result) = mpsc::channel();
     view.with_webview(move |platform| {
         let complete = ExecuteScriptCompletedHandler::create(Box::new({
             let done = done.clone();
             move |status, json| {
-                let _ = done.send(status.map(|()| json == "true").map_err(crate::error));
+                let _ = done.send(status.map_err(crate::error).and_then(|()| {
+                    serde_json::from_str::<PlaybackHealth>(&json).map_err(crate::error)
+                }));
                 Ok(())
             }
         }));
